@@ -27,16 +27,18 @@ bygger egna enheter (ESP32, nRF52 och liknande) och vill ha ett enkelt gränssni
 | Bygg | Gradle Kotlin DSL + Version Catalog (`gradle/libs.versions.toml`) | En plats för alla versioner. |
 | Test | JUnit, Turbine (Flow), MockK, Compose UI-test | Täcker ViewModels, repositories och UI. |
 
-**Min SDK:** 34 (Android 14). **Target SDK:** senaste stabila.
+**Min SDK:** 34 (Android 14). **Target SDK:** 37. Alla versioner, även SDK-nivåerna, finns i `gradle/libs.versions.toml`.
+
+**Paket och `applicationId`:** `io.github.ftatc.tinkertaphome`. `applicationId` får aldrig ändras.
 
 ## Arkitekturprinciper
 
-### Lager
-Koden delas i tre lager. Beroenden går bara inåt: `ui` → `domain` ← `data`.
+### Lager och moduler
+Koden delas i tre lager, och varje lager är en egen Gradle-modul. Beroenden går bara inåt: `ui` → `domain` ← `data`. Modulgränserna gör att kompilatorn stoppar beroenden åt fel håll.
 
-- **`ui/`**: Composables och ViewModels. Ingen direkt åtkomst till BLE, databas eller Android-system-API:er. Enda undantaget är behörighetsflödet (se Regler).
-- **`domain/`**: Modeller, use cases och repository-interface. Ren Kotlin utan Android-importer.
-- **`data/`**: Repository-implementationer, BLE-klient, Room-DAO:er, DataStore.
+- **`:app`** (paket `…tinkertaphome.ui`): Composables, ViewModels, `Application` och `MainActivity`. Ingen direkt åtkomst till BLE, databas eller Android-system-API:er. Enda undantaget är behörighetsflödet (se Regler). Beror på `:domain`, och på `:data` enbart för att Hilt ska hitta dess moduler. Klasser i `:data` används aldrig direkt från `:app`.
+- **`:domain`** (Kotlin/JVM-modul, paket `…tinkertaphome.domain`): Modeller, use cases och repository-interface. Ren Kotlin utan Android-importer. Enda tillåtna beroenden är `kotlinx-coroutines-core` och `javax.inject` (för `@Inject` på use cases). Fakes som delas mellan modulernas tester ligger i `src/testFixtures`.
+- **`:data`** (Android-biblioteksmodul, paket `…tinkertaphome.data`): Repository-implementationer, BLE-klient, Room-DAO:er, DataStore och Hilt-moduler som binder implementationerna till interfacen i `:domain`. Hilt-moduler här är `internal`.
 
 ### Regler
 - **All I/O sker i `data`-lagret.** BLE, databas, filer och nätverk anropas aldrig från `ui` eller `domain`.
@@ -72,7 +74,7 @@ Koden delas i tre lager. Beroenden går bara inåt: `ui` → `domain` ← `data`
   - Finns ingen enhet eller emulator tillgänglig: säg uttryckligen att de instrumenterade testerna inte har körts. Påstå inte att ändringen är verifierad.
 
 ### Databas (Room)
-- **Schemat exporteras från första versionen.** `@Database(exportSchema = true)` och KSP-argumentet `room.schemaLocation` pekar på `schemas/` i modulen. Katalogen `schemas/` checkas in. Den räknas inte som en genererad fil som ska ignoreras.
+- **Schemat exporteras från första versionen.** `@Database(exportSchema = true)` och Room-pluginens `room { schemaDirectory("$projectDir/schemas") }` i `data/build.gradle.kts`. Katalogen `data/schemas/` checkas in. Den räknas inte som en genererad fil som ska ignoreras.
 - **Varje schemaändring höjer `version` och får en migration** i samma ändring: en `AutoMigration` när Room klarar det, annars en manuell `Migration`. Den exporterade JSON-filen för den nya versionen checkas in tillsammans med migrationen.
 - **Ändra aldrig en redan incheckad schema-JSON** eller en migration som har funnits i en release. Rätta i stället med en ny version och en ny migration.
 
@@ -107,6 +109,14 @@ Koden delas i tre lager. Beroenden går bara inåt: `ui` → `domain` ← `data`
 ./gradlew test                   # Enhetstester
 ./gradlew connectedAndroidTest   # Instrumenterade tester: Compose UI, Room, migreringar (kräver enhet/emulator)
 ./gradlew lint                   # Lint
+./gradlew :domain:test           # Bara en modul
+```
+
+Gradle behöver en JDK och Android SDK. Om `JAVA_HOME` eller `ANDROID_HOME` saknas i miljön, sätt dem för kommandot, till exempel med Android Studios inbyggda JDK:
+
+```bash
+export JAVA_HOME="/c/Program Files/Android/Android Studio/jbr"
+export ANDROID_HOME="$HOME/AppData/Local/Android/Sdk"
 ```
 
 > Obs: BLE fungerar inte i emulatorn. Allt som rör riktig BLE-kommunikation måste testas på fysisk enhet.

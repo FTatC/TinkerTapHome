@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="devices_title">Enheter</string>
+    <string name="devices_empty">Inga enheter än</string>
+    <string name="devices_loading">Laddar enheter</string>
+</resources>

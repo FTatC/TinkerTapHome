@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name" translatable="false">TinkerTap Home</string>
+    <string name="devices_title">Devices</string>
+    <string name="devices_empty">No devices yet</string>
+    <string name="devices_loading">Loading devices</string>
+</resources>
