@@ -19,7 +19,7 @@ class DeviceDaoTest {
 
     private lateinit var database: TinkerTapDatabase
     private lateinit var dao: DeviceDao
-    private val address = testAddress(1)
+    private val address = testAddress(1).value
 
     @Before
     fun setUp() {
