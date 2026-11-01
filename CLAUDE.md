@@ -67,6 +67,17 @@ Nya moduler använder ett av pluginsen. Kopiera inte `compileSdk`, `minSdk`, `co
   - **Själva förfrågan** (`rememberLauncherForActivityResult` med `RequestMultiplePermissions`) kräver en `Activity` och är därför det enda tillåtna undantaget från regeln att `ui` inte använder Android-system-API:er. Den lever bara i behörighetsflödets Composable och rapporterar resultatet som en händelse till sin ViewModel.
 - **Inga hårdkodade strängar i UI.** Använd `strings.xml`.
 
+### Språk
+| Vad | Språk | Exempel |
+|---|---|---|
+| Identifierare (klasser, funktioner, variabler, paket, filer) | Engelska | `ObserveDevicesUseCase`, `toDeviceListUiState()` |
+| KDoc och kommentarer | Svenska | `/** Strömmar sparade enheter sorterade på namn. */` |
+| Testnamn | Engelska, som mening i backticks (instrumenterade tester i camelCase) | `` `shows error state when storage cannot be read` `` |
+| Testdata | Svenska går bra | `testDevice(name = "Lampa")` |
+| Commit-meddelanden och branchnamn | Engelska | `Normalize BLE addresses with a BleAddress value class` |
+| UI-strängar | Engelska i `values/`, svenska i `values-sv/`. Varje ny sträng läggs in i båda. | `devices_empty` |
+| CLAUDE.md och dokument i `docs/` | Svenska | – |
+
 ### Tester
 - **Tester skrivs samtidigt som koden.** Varje ny eller ändrad funktion, klass eller ViewModel får nya eller uppdaterade tester i samma ändring. Tester skjuts aldrig upp till senare.
 - **Ändrat beteende kräver ändrade tester.** Rör en ändring befintlig logik ska tillhörande tester uppdateras så att de verifierar det nya beteendet. Gamla tester får inte bara fortsätta passera av en slump.
