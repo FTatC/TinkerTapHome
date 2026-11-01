@@ -49,7 +49,7 @@ class DeviceListContentTest {
 
         devices.forEach { device ->
             composeRule.onNodeWithText(device.name).assertIsDisplayed()
-            composeRule.onNodeWithText(device.address).assertIsDisplayed()
+            composeRule.onNodeWithText(device.address.value).assertIsDisplayed()
         }
     }
 }

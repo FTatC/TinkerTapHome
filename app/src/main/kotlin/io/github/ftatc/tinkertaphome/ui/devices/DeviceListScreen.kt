@@ -22,6 +22,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.ftatc.tinkertaphome.R
+import io.github.ftatc.tinkertaphome.domain.model.BleAddress
 import io.github.ftatc.tinkertaphome.domain.model.Device
 import io.github.ftatc.tinkertaphome.ui.theme.TinkerTapTheme
 
@@ -69,7 +70,7 @@ private fun DeviceList(devices: List<Device>, modifier: Modifier) {
         items(devices, key = { it.id }) { device ->
             ListItem(
                 headlineContent = { Text(device.name) },
-                supportingContent = { Text(device.address) },
+                supportingContent = { Text(device.address.value) },
             )
         }
     }
@@ -82,10 +83,13 @@ private fun DeviceListContentPreview() {
         DeviceListContent(
             uiState = DeviceListUiState.Content(
                 listOf(
-                    Device(id = 1, address = "AA:BB:CC:DD:EE:01", name = "Lampa"),
-                    Device(id = 2, address = "AA:BB:CC:DD:EE:02", name = "Relä"),
+                    previewDevice(id = 1, address = "AA:BB:CC:DD:EE:01", name = "Lampa"),
+                    previewDevice(id = 2, address = "AA:BB:CC:DD:EE:02", name = "Relä"),
                 ),
             ),
         )
     }
 }
+
+private fun previewDevice(id: Long, address: String, name: String) =
+    Device(id = id, address = checkNotNull(BleAddress.parse(address)), name = name)

@@ -19,7 +19,7 @@ class RoomDeviceRepositoryTest {
 
     @Test
     fun `maps entities to domain devices`() = runTest {
-        dao.entities.value = listOf(DeviceEntity(id = 1, address = testAddress(1), name = "Lampa"))
+        dao.entities.value = listOf(DeviceEntity(id = 1, address = testAddress(1).value, name = "Lampa"))
 
         repository.observeDevices().test {
             assertEquals(listOf(testDevice(id = 1, name = "Lampa")), awaitItem())
@@ -31,9 +31,31 @@ class RoomDeviceRepositoryTest {
         repository.observeDevices().test {
             assertEquals(emptyList<Device>(), awaitItem())
 
-            dao.entities.value = listOf(DeviceEntity(id = 2, address = testAddress(2), name = "Relä"))
+            dao.entities.value = listOf(DeviceEntity(id = 2, address = testAddress(2).value, name = "Relä"))
 
             assertEquals(listOf("Relä"), awaitItem().map { it.name })
+        }
+    }
+
+    @Test
+    fun `normalizes addresses stored in lower case`() = runTest {
+        // Regressionstest: en adress med gemener ska ge samma domänadress som med versaler.
+        dao.entities.value = listOf(DeviceEntity(id = 1, address = "aa:bb:cc:dd:ee:01", name = "Lampa"))
+
+        repository.observeDevices().test {
+            assertEquals(listOf(testAddress(1)), awaitItem().map { it.address })
+        }
+    }
+
+    @Test
+    fun `skips rows with an invalid address instead of failing the whole list`() = runTest {
+        dao.entities.value = listOf(
+            DeviceEntity(id = 1, address = "inte en adress", name = "Trasig"),
+            DeviceEntity(id = 2, address = testAddress(2).value, name = "Relä"),
+        )
+
+        repository.observeDevices().test {
+            assertEquals(listOf(testDevice(id = 2, name = "Relä")), awaitItem())
         }
     }
 

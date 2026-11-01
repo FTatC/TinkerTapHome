@@ -13,5 +13,5 @@ internal class RoomDeviceRepository @Inject constructor(
 ) : DeviceRepository {
 
     override fun observeDevices(): Flow<List<Device>> =
-        dao.observeAll().map { entities -> entities.map { it.toDomain() } }
+        dao.observeAll().map { entities -> entities.mapNotNull { it.toDomain() } }
 }
