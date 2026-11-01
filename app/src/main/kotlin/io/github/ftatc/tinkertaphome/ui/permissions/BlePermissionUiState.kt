@@ -15,6 +15,11 @@ sealed interface BlePermissionUiState {
         val previouslyDenied: Boolean,
     ) : BlePermissionUiState
 
-    /** Användaren har nekat permanent. Behörigheten kan bara slås på i appens inställningar. */
-    data object PermanentlyDenied : BlePermissionUiState
+    /**
+     * Användaren har nekat permanent. Behörigheten kan bara slås på i appens inställningar.
+     *
+     * @property settingsUnavailable `true` om appens inställningar inte gick att öppna. Då visas
+     * en beskrivning av var behörigheten slås på i stället för en knapp.
+     */
+    data class PermanentlyDenied(val settingsUnavailable: Boolean = false) : BlePermissionUiState
 }

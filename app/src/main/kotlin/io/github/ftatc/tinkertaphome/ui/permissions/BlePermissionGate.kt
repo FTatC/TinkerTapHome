@@ -58,7 +58,9 @@ fun BlePermissionGate(
     BlePermissionContent(
         uiState = uiState,
         onRequestPermissions = { permissions -> launcher.launch(permissions.toTypedArray()) },
-        onOpenSettings = { context.startActivity(appSettingsIntent(context)) },
+        onOpenSettings = {
+            if (!context.tryStartActivity(appSettingsIntent(context))) viewModel.onSettingsUnavailable()
+        },
         content = content,
     )
 }
@@ -82,16 +84,20 @@ fun BlePermissionContent(
             buttonLabel = R.string.permission_ble_grant,
             onClick = { onRequestPermissions(uiState.permissions) },
         )
-        BlePermissionUiState.PermanentlyDenied -> PermissionExplanation(
-            message = R.string.permission_ble_permanently_denied,
-            buttonLabel = R.string.permission_ble_open_settings,
-            onClick = onOpenSettings,
-        )
+        is BlePermissionUiState.PermanentlyDenied -> if (uiState.settingsUnavailable) {
+            PermissionExplanation(message = R.string.permission_ble_settings_unavailable)
+        } else {
+            PermissionExplanation(
+                message = R.string.permission_ble_permanently_denied,
+                buttonLabel = R.string.permission_ble_open_settings,
+                onClick = onOpenSettings,
+            )
+        }
     }
 }
 
 @Composable
-private fun PermissionExplanation(message: Int, buttonLabel: Int, onClick: () -> Unit) {
+private fun PermissionExplanation(message: Int, buttonLabel: Int? = null, onClick: () -> Unit = {}) {
     Scaffold { padding ->
         Column(
             modifier = Modifier.fillMaxSize().padding(padding).padding(24.dp),
@@ -104,8 +110,10 @@ private fun PermissionExplanation(message: Int, buttonLabel: Int, onClick: () ->
                 textAlign = TextAlign.Center,
             )
             Text(text = stringResource(message), textAlign = TextAlign.Center)
-            Button(onClick = onClick) {
-                Text(stringResource(buttonLabel))
+            if (buttonLabel != null) {
+                Button(onClick = onClick) {
+                    Text(stringResource(buttonLabel))
+                }
             }
         }
     }

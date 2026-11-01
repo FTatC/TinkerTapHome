@@ -48,7 +48,7 @@ class BlePermissionViewModelTest {
 
         viewModel.onPermissionResult(PermissionRequestResult.PermanentlyDenied)
 
-        assertEquals(BlePermissionUiState.PermanentlyDenied, viewModel.uiState.value)
+        assertEquals(BlePermissionUiState.PermanentlyDenied(), viewModel.uiState.value)
     }
 
     @Test
@@ -69,7 +69,7 @@ class BlePermissionViewModelTest {
 
         viewModel.onResume()
 
-        assertEquals(BlePermissionUiState.PermanentlyDenied, viewModel.uiState.value)
+        assertEquals(BlePermissionUiState.PermanentlyDenied(), viewModel.uiState.value)
     }
 
     @Test
@@ -81,5 +81,36 @@ class BlePermissionViewModelTest {
         viewModel.onResume()
 
         assertEquals(BlePermissionUiState.Required(required, previouslyDenied = false), viewModel.uiState.value)
+    }
+
+    @Test
+    fun `settings that cannot be opened switch to manual instructions`() {
+        val viewModel = BlePermissionViewModel(checker)
+        viewModel.onPermissionResult(PermissionRequestResult.PermanentlyDenied)
+
+        viewModel.onSettingsUnavailable()
+
+        assertEquals(BlePermissionUiState.PermanentlyDenied(settingsUnavailable = true), viewModel.uiState.value)
+    }
+
+    @Test
+    fun `settings unavailable is ignored unless permanently denied`() {
+        val viewModel = BlePermissionViewModel(checker)
+
+        viewModel.onSettingsUnavailable()
+
+        assertEquals(BlePermissionUiState.Required(required, previouslyDenied = false), viewModel.uiState.value)
+    }
+
+    @Test
+    fun `granting manually after settings were unavailable shows the content`() {
+        val viewModel = BlePermissionViewModel(checker)
+        viewModel.onPermissionResult(PermissionRequestResult.PermanentlyDenied)
+        viewModel.onSettingsUnavailable()
+
+        checker.granted = true
+        viewModel.onResume()
+
+        assertEquals(BlePermissionUiState.Granted, viewModel.uiState.value)
     }
 }

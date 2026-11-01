@@ -29,4 +29,5 @@
     <string name="permission_ble_grant">Tillåt Bluetooth</string>
     <string name="permission_ble_permanently_denied">Bluetooth-åtkomst är avstängd för TinkerTap Home. Slå på ”Enheter i närheten” i appens inställningar.</string>
     <string name="permission_ble_open_settings">Öppna inställningar</string>
+    <string name="permission_ble_settings_unavailable">Appens inställningar gick inte att öppna. Öppna appen Inställningar, gå till Appar › TinkerTap Home › Behörigheter och tillåt ”Enheter i närheten”.</string>
 </resources>

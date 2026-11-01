@@ -148,11 +148,11 @@ class AndroidDeviceScannerTest {
     }
 
     @Test
-    fun `security exception during the scan is reported as missing permission`() = runTest {
+    fun `permission denied by android is reported as missing permission`() = runTest {
         scanner.scan().test {
             awaitItem()
 
-            source.fail(SecurityException("Behörigheten togs bort"))
+            source.send(RawScanEvent.PermissionDenied)
 
             assertEquals(Outcome.Failure(BleError.PermissionMissing), awaitItem())
             awaitComplete()
@@ -217,9 +217,5 @@ class AndroidDeviceScannerTest {
         }
 
         suspend fun send(event: RawScanEvent) = events.send(event)
-
-        fun fail(cause: Throwable) {
-            events.close(cause)
-        }
     }
 }

@@ -7,6 +7,7 @@ import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 
 @HiltViewModel
 class BlePermissionViewModel @Inject constructor(
@@ -21,7 +22,14 @@ class BlePermissionViewModel @Inject constructor(
         _uiState.value = when (result) {
             PermissionRequestResult.Granted -> BlePermissionUiState.Granted
             PermissionRequestResult.Denied -> required(previouslyDenied = true)
-            PermissionRequestResult.PermanentlyDenied -> BlePermissionUiState.PermanentlyDenied
+            PermissionRequestResult.PermanentlyDenied -> BlePermissionUiState.PermanentlyDenied()
+        }
+    }
+
+    /** Anropas när appens inställningar inte gick att öppna. */
+    fun onSettingsUnavailable() {
+        _uiState.update { state ->
+            if (state is BlePermissionUiState.PermanentlyDenied) state.copy(settingsUnavailable = true) else state
         }
     }
 

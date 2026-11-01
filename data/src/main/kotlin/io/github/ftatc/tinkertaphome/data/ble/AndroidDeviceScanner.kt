@@ -8,7 +8,6 @@ import io.github.ftatc.tinkertaphome.domain.repository.BlePermissionChecker
 import io.github.ftatc.tinkertaphome.domain.repository.DeviceScanner
 import javax.inject.Inject
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.transformWhile
@@ -29,9 +28,6 @@ internal class AndroidDeviceScanner @Inject constructor(
                 emitAll(foundDevices())
             }
         }
-    }.catch { cause ->
-        // Behörigheten kan tas bort medan skanningen pågår. Android kastar då SecurityException.
-        if (cause is SecurityException) emit(Outcome.Failure(BleError.PermissionMissing)) else throw cause
     }
 
     /** Samlar unika enheter per adress och skickar hela listan efter varje ändring. Avslutas vid fel. */
@@ -48,6 +44,10 @@ internal class AndroidDeviceScanner @Inject constructor(
                 }
                 RawScanEvent.Unavailable -> {
                     emit(Outcome.Failure(BleError.BluetoothOff))
+                    false
+                }
+                RawScanEvent.PermissionDenied -> {
+                    emit(Outcome.Failure(BleError.PermissionMissing))
                     false
                 }
                 is RawScanEvent.Failed -> {

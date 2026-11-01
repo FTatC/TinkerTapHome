@@ -68,7 +68,7 @@ class BlePermissionContentTest {
 
     @Test
     fun permanentlyDeniedOpensSettingsOnClick() {
-        show(BlePermissionUiState.PermanentlyDenied)
+        show(BlePermissionUiState.PermanentlyDenied())
 
         composeRule.onNodeWithText(PROTECTED_CONTENT).assertDoesNotExist()
         composeRule.onNodeWithText(string(R.string.permission_ble_permanently_denied)).assertIsDisplayed()
@@ -79,5 +79,14 @@ class BlePermissionContentTest {
 
     private companion object {
         const val PROTECTED_CONTENT = "Skyddat innehåll"
+    }
+
+    @Test
+    fun settingsUnavailableShowsManualInstructionsWithoutAButton() {
+        show(BlePermissionUiState.PermanentlyDenied(settingsUnavailable = true))
+
+        composeRule.onNodeWithText(string(R.string.permission_ble_settings_unavailable)).assertIsDisplayed()
+        composeRule.onNodeWithText(string(R.string.permission_ble_open_settings)).assertDoesNotExist()
+        composeRule.onNodeWithText(PROTECTED_CONTENT).assertDoesNotExist()
     }
 }
