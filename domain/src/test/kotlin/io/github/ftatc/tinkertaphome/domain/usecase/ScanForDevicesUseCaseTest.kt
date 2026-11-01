@@ -102,6 +102,18 @@ class ScanForDevicesUseCaseTest {
     }
 
     @Test
+    fun `completes right after a scan error instead of waiting for the timeout`() = runTest {
+        // Regressionstest: combine med de sparade enheterna höll flödet öppet tills tidsgränsen.
+        scanner.emit(Outcome.Failure(BleError.BluetoothOff))
+
+        scanForDevices().test {
+            assertEquals(Outcome.Failure(BleError.BluetoothOff), awaitItem())
+            awaitComplete()
+        }
+        assertEquals(0L, testScheduler.currentTime)
+    }
+
+    @Test
     fun `stops scanning and completes after the scan duration`() = runTest {
         scanner.emit(Outcome.Success(emptyList()))
 

@@ -4,12 +4,14 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.ftatc.tinkertaphome.R
 import io.github.ftatc.tinkertaphome.domain.model.DeviceError
 import io.github.ftatc.tinkertaphome.domain.model.testDevice
 import io.github.ftatc.tinkertaphome.ui.theme.TinkerTapTheme
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -20,11 +22,13 @@ class DeviceListContentTest {
     @get:Rule
     val composeRule = createComposeRule()
 
+    private var scanClicked = false
+
     private fun string(id: Int) = InstrumentationRegistry.getInstrumentation().targetContext.getString(id)
 
     private fun show(uiState: DeviceListUiState) {
         composeRule.setContent {
-            TinkerTapTheme { DeviceListContent(uiState = uiState) }
+            TinkerTapTheme { DeviceListContent(uiState = uiState, onScanClick = { scanClicked = true }) }
         }
     }
 
@@ -59,5 +63,14 @@ class DeviceListContentTest {
             composeRule.onNodeWithText(device.name).assertIsDisplayed()
             composeRule.onNodeWithText(device.address.value).assertIsDisplayed()
         }
+    }
+
+    @Test
+    fun findDevicesButtonCallsOnScanClick() {
+        show(DeviceListUiState.Empty)
+
+        composeRule.onNodeWithText(string(R.string.devices_scan)).performClick()
+
+        assertTrue(scanClicked)
     }
 }
