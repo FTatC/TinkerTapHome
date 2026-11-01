@@ -7,7 +7,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.ftatc.tinkertaphome.R
-import io.github.ftatc.tinkertaphome.domain.model.Device
+import io.github.ftatc.tinkertaphome.domain.model.testDevice
 import io.github.ftatc.tinkertaphome.ui.theme.TinkerTapTheme
 import org.junit.Rule
 import org.junit.Test
@@ -43,18 +43,13 @@ class DeviceListContentTest {
 
     @Test
     fun contentStateShowsNameAndAddressOfEachDevice() {
-        show(
-            DeviceListUiState.Content(
-                listOf(
-                    Device(id = 1, address = "AA:BB:CC:DD:EE:01", name = "Lampa"),
-                    Device(id = 2, address = "AA:BB:CC:DD:EE:02", name = "Relä"),
-                ),
-            ),
-        )
+        val devices = listOf(testDevice(id = 1, name = "Lampa"), testDevice(id = 2, name = "Relä"))
 
-        composeRule.onNodeWithText("Lampa").assertIsDisplayed()
-        composeRule.onNodeWithText("AA:BB:CC:DD:EE:01").assertIsDisplayed()
-        composeRule.onNodeWithText("Relä").assertIsDisplayed()
-        composeRule.onNodeWithText("AA:BB:CC:DD:EE:02").assertIsDisplayed()
+        show(DeviceListUiState.Content(devices))
+
+        devices.forEach { device ->
+            composeRule.onNodeWithText(device.name).assertIsDisplayed()
+            composeRule.onNodeWithText(device.address).assertIsDisplayed()
+        }
     }
 }

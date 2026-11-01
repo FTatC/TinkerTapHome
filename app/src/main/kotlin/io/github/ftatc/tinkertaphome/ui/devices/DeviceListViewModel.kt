@@ -17,7 +17,7 @@ class DeviceListViewModel @Inject constructor(
 ) : ViewModel() {
 
     val uiState: StateFlow<DeviceListUiState> = observeDevices()
-        .map(::toUiState)
+        .map { devices -> devices.toDeviceListUiState() }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
@@ -30,5 +30,5 @@ class DeviceListViewModel @Inject constructor(
     }
 }
 
-internal fun toUiState(devices: List<Device>): DeviceListUiState =
-    if (devices.isEmpty()) DeviceListUiState.Empty else DeviceListUiState.Content(devices)
+private fun List<Device>.toDeviceListUiState(): DeviceListUiState =
+    if (isEmpty()) DeviceListUiState.Empty else DeviceListUiState.Content(this)
