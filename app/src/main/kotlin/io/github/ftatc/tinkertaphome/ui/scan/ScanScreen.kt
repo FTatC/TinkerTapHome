@@ -76,7 +76,7 @@ fun ScanContent(
             when {
                 uiState.devices.isNotEmpty() -> FoundDevices(uiState.devices, onDeviceClick)
                 uiState.isScanning -> CenteredText(stringResource(R.string.scan_searching))
-                uiState.error == null -> CenteredText(stringResource(R.string.scan_none_found))
+                uiState.scanError == null -> CenteredText(stringResource(R.string.scan_none_found))
             }
         }
     }
@@ -91,7 +91,7 @@ private fun ScanStatus(uiState: ScanUiState, onScanAgain: () -> Unit) {
                 modifier = Modifier.fillMaxWidth().semantics { contentDescription = description },
             )
         }
-        uiState.error != null -> StatusRow(errorMessage(uiState.error), R.string.scan_retry, onScanAgain)
+        uiState.scanError != null -> StatusRow(errorMessage(uiState.scanError), R.string.scan_retry, onScanAgain)
         else -> StatusRow(stringResource(R.string.scan_finished), R.string.scan_again, onScanAgain)
     }
 }

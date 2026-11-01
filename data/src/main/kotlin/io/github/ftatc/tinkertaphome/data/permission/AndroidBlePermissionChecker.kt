@@ -1,7 +1,7 @@
 package io.github.ftatc.tinkertaphome.data.permission
 
 import android.Manifest
-import io.github.ftatc.tinkertaphome.domain.repository.BlePermissionChecker
+import io.github.ftatc.tinkertaphome.domain.ble.BlePermissionChecker
 import javax.inject.Inject
 
 internal class AndroidBlePermissionChecker @Inject constructor(

@@ -20,12 +20,15 @@ internal sealed interface RawScanEvent {
 
     data class Result(val address: String, val name: String?, val rssi: Int) : RawScanEvent
 
-    /** Skannern kunde inte startas, till exempel för att Bluetooth stängdes av. */
-    data object Unavailable : RawScanEvent
+    /** Händelser som avslutar skanningen. Efter en sådan kommer inga fler händelser. */
+    sealed interface Stopped : RawScanEvent
+
+    /** Bluetooth är avstängt, eller stängdes av precis när skanningen skulle starta. */
+    data object BluetoothOff : Stopped
 
     /** Android nekade skanningen eftersom BLE-behörigheten saknas. */
-    data object PermissionDenied : RawScanEvent
+    data object PermissionDenied : Stopped
 
     /** Skannern rapporterade ett fel. [errorCode] är ett av `ScanCallback.SCAN_FAILED_*`. */
-    data class Failed(val errorCode: Int) : RawScanEvent
+    data class Failed(val errorCode: Int) : Stopped
 }

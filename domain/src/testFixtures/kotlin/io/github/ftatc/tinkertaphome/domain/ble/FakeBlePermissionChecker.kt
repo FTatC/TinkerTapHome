@@ -1,4 +1,4 @@
-package io.github.ftatc.tinkertaphome.domain.repository
+package io.github.ftatc.tinkertaphome.domain.ble
 
 /** Fake för tester. Sätt [granted] för att simulera att användaren beviljar eller nekar. */
 class FakeBlePermissionChecker(var granted: Boolean = false) : BlePermissionChecker {

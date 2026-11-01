@@ -1,4 +1,4 @@
-package io.github.ftatc.tinkertaphome.domain.repository
+package io.github.ftatc.tinkertaphome.domain.ble
 
 /**
  * Kontrollerar om appen har de runtime-behörigheter som BLE kräver. Implementeras i `data`-lagret.

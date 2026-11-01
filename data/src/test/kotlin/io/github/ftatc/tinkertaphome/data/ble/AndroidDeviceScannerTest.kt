@@ -6,7 +6,7 @@ import io.github.ftatc.tinkertaphome.domain.Outcome
 import io.github.ftatc.tinkertaphome.domain.model.BleError
 import io.github.ftatc.tinkertaphome.domain.model.ScannedDevice
 import io.github.ftatc.tinkertaphome.domain.model.testAddress
-import io.github.ftatc.tinkertaphome.domain.repository.FakeBlePermissionChecker
+import io.github.ftatc.tinkertaphome.domain.ble.FakeBlePermissionChecker
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.onCompletion
@@ -138,11 +138,11 @@ class AndroidDeviceScannerTest {
     }
 
     @Test
-    fun `scanner becoming unavailable is reported as bluetooth off`() = runTest {
+    fun `bluetooth turned off during the scan is reported as bluetooth off`() = runTest {
         scanner.scan().test {
             awaitItem()
 
-            source.send(RawScanEvent.Unavailable)
+            source.send(RawScanEvent.BluetoothOff)
 
             assertEquals(Outcome.Failure(BleError.BluetoothOff), awaitItem())
             awaitComplete()

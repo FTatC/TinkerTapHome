@@ -27,7 +27,7 @@ internal class AndroidBleScanSource @Inject constructor(
     override fun isBluetoothEnabled(): Boolean = adapter?.isEnabled == true
 
     override fun scanEvents(): Flow<RawScanEvent> = scanEventFlow { listener ->
-        val scanner = adapter?.bluetoothLeScanner ?: return@scanEventFlow ScanStart.Unavailable
+        val scanner = adapter?.bluetoothLeScanner ?: return@scanEventFlow ScanStart.BluetoothOff
         startScan(scanner, listener.toScanCallback())
     }
 
@@ -35,26 +35,26 @@ internal class AndroidBleScanSource @Inject constructor(
         try {
             scanner.startScan(null, scanSettings, callback)
             ScanStart.Started { stopScan(scanner, callback) }
-        } catch (e: SecurityException) {
+        } catch (_: SecurityException) {
             ScanStart.PermissionDenied
-        } catch (e: IllegalStateException) {
+        } catch (_: IllegalStateException) {
             // Bluetooth stängdes av precis innan skanningen skulle starta.
-            ScanStart.Unavailable
+            ScanStart.BluetoothOff
         }
 
     /**
-     * Stoppar skanningen. Returnerar `false` om Android inte tog emot anropet, vilket är ofarligt:
-     * saknas behörigheten eller är Bluetooth avstängt har Android redan stoppat skanningen själv.
+     * Stoppar skanningen. Fel ignoreras med flit: saknas behörigheten eller är Bluetooth avstängt
+     * har Android redan stoppat skanningen själv.
      */
-    private fun stopScan(scanner: BluetoothLeScanner, callback: ScanCallback): Boolean =
+    private fun stopScan(scanner: BluetoothLeScanner, callback: ScanCallback) {
         try {
             scanner.stopScan(callback)
-            true
-        } catch (e: SecurityException) {
-            false
-        } catch (e: IllegalStateException) {
-            false
+        } catch (_: SecurityException) {
+            // Redan stoppad av Android.
+        } catch (_: IllegalStateException) {
+            // Redan stoppad av Android.
         }
+    }
 
     private companion object {
         val scanSettings: ScanSettings = ScanSettings.Builder()

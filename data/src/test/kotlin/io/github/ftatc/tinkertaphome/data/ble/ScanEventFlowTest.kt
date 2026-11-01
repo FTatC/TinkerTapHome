@@ -59,8 +59,8 @@ class ScanEventFlowTest {
     }
 
     @Test
-    fun `an unavailable scanner at start is reported and ends the flow`() = runTest {
-        assertEquals(listOf(RawScanEvent.Unavailable), scanEventFlow { ScanStart.Unavailable }.toList())
+    fun `bluetooth off at start is reported and ends the flow`() = runTest {
+        assertEquals(listOf(RawScanEvent.BluetoothOff), scanEventFlow { ScanStart.BluetoothOff }.toList())
     }
 
     @Test

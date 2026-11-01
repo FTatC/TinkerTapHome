@@ -19,7 +19,7 @@ internal sealed interface ScanStart {
     /** Skanningen har startat. [stop] stoppar den och får inte kasta. */
     class Started(val stop: () -> Unit) : ScanStart
 
-    data object Unavailable : ScanStart
+    data object BluetoothOff : ScanStart
 
     data object PermissionDenied : ScanStart
 }
@@ -45,14 +45,14 @@ internal fun scanEventFlow(start: (ScanListener) -> ScanStart): Flow<RawScanEven
     }
     when (val started = start(listener)) {
         is ScanStart.Started -> awaitClose { started.stop() }
-        ScanStart.Unavailable -> stopWith(RawScanEvent.Unavailable)
+        ScanStart.BluetoothOff -> stopWith(RawScanEvent.BluetoothOff)
         ScanStart.PermissionDenied -> stopWith(RawScanEvent.PermissionDenied)
     }
 }.buffer(capacity = EVENT_BUFFER_SIZE, onBufferOverflow = BufferOverflow.DROP_OLDEST)
 
 private const val EVENT_BUFFER_SIZE = 64
 
-private suspend fun ProducerScope<RawScanEvent>.stopWith(event: RawScanEvent) {
+private suspend fun ProducerScope<RawScanEvent>.stopWith(event: RawScanEvent.Stopped) {
     // send väntar tills det finns plats, så händelsen kan inte tappas.
     send(event)
     close()

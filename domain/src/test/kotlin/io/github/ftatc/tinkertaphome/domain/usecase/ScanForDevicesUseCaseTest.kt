@@ -9,7 +9,7 @@ import io.github.ftatc.tinkertaphome.domain.model.ScannedDevice
 import io.github.ftatc.tinkertaphome.domain.model.testDevice
 import io.github.ftatc.tinkertaphome.domain.model.testScannedDevice
 import io.github.ftatc.tinkertaphome.domain.repository.FakeDeviceRepository
-import io.github.ftatc.tinkertaphome.domain.repository.FakeDeviceScanner
+import io.github.ftatc.tinkertaphome.domain.ble.FakeDeviceScanner
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceTimeBy
