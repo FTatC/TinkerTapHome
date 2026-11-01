@@ -1,7 +1,9 @@
 package io.github.ftatc.tinkertaphome.ui.devices
 
 import app.cash.turbine.test
+import io.github.ftatc.tinkertaphome.domain.Outcome
 import io.github.ftatc.tinkertaphome.domain.model.Device
+import io.github.ftatc.tinkertaphome.domain.model.DeviceError
 import io.github.ftatc.tinkertaphome.domain.model.testDevice
 import io.github.ftatc.tinkertaphome.domain.repository.DeviceRepository
 import io.github.ftatc.tinkertaphome.domain.repository.FakeDeviceRepository
@@ -30,7 +32,7 @@ class DeviceListViewModelTest {
         viewModel.uiState.test {
             assertEquals(DeviceListUiState.Loading, awaitItem())
 
-            repository.emit(emptyList())
+            repository.emit(Outcome.Success(emptyList()))
 
             assertEquals(DeviceListUiState.Empty, awaitItem())
         }
@@ -69,13 +71,23 @@ class DeviceListViewModelTest {
         }
     }
 
+    @Test
+    fun `shows error state when storage cannot be read`() = runTest {
+        val repository = FakeDeviceRepository().apply { error.value = DeviceError.StorageUnavailable }
+        val viewModel = DeviceListViewModel(ObserveDevicesUseCase(repository))
+
+        viewModel.uiState.test {
+            assertEquals(DeviceListUiState.Error(DeviceError.StorageUnavailable), awaitItem())
+        }
+    }
+
     private fun viewModelWith(devices: List<Device>) =
         DeviceListViewModel(ObserveDevicesUseCase(FakeDeviceRepository(devices)))
 
     /** Repository som inte skickar något förrän testet anropar [emit], så att Loading syns. */
     private class PendingDeviceRepository : DeviceRepository {
-        private val flow = MutableSharedFlow<List<Device>>()
-        override fun observeDevices(): Flow<List<Device>> = flow
-        suspend fun emit(devices: List<Device>) = flow.emit(devices)
+        private val flow = MutableSharedFlow<Outcome<List<Device>, DeviceError>>()
+        override fun observeDevices(): Flow<Outcome<List<Device>, DeviceError>> = flow
+        suspend fun emit(outcome: Outcome<List<Device>, DeviceError>) = flow.emit(outcome)
     }
 }
