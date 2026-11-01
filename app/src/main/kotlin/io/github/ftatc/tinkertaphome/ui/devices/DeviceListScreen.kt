@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -29,17 +30,29 @@ import io.github.ftatc.tinkertaphome.ui.theme.TinkerTapTheme
 
 /** Skärmen med sparade enheter. Kopplar ViewModel till den tillståndslösa [DeviceListContent]. */
 @Composable
-fun DeviceListScreen(viewModel: DeviceListViewModel = hiltViewModel()) {
+fun DeviceListScreen(
+    onScanClick: () -> Unit,
+    viewModel: DeviceListViewModel = hiltViewModel(),
+) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    DeviceListContent(uiState = uiState)
+    DeviceListContent(uiState = uiState, onScanClick = onScanClick)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DeviceListContent(uiState: DeviceListUiState, modifier: Modifier = Modifier) {
+fun DeviceListContent(
+    uiState: DeviceListUiState,
+    onScanClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Scaffold(
         modifier = modifier,
         topBar = { TopAppBar(title = { Text(stringResource(R.string.devices_title)) }) },
+        floatingActionButton = {
+            ExtendedFloatingActionButton(onClick = onScanClick) {
+                Text(stringResource(R.string.devices_scan))
+            }
+        },
     ) { padding ->
         val contentModifier = Modifier.fillMaxSize().padding(padding)
         when (uiState) {
@@ -93,6 +106,7 @@ private fun DeviceList(devices: List<Device>, modifier: Modifier) {
 private fun DeviceListContentPreview() {
     TinkerTapTheme {
         DeviceListContent(
+            onScanClick = {},
             uiState = DeviceListUiState.Content(
                 listOf(
                     previewDevice(id = 1, address = "AA:BB:CC:DD:EE:01", name = "Lampa"),

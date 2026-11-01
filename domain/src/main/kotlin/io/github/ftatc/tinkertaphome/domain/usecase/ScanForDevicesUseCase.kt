@@ -13,13 +13,14 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.transformWhile
 import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * Skannar efter enheter som inte redan är sparade, med starkast signal först.
  *
  * Skanningen stoppas automatiskt efter [SCAN_DURATION] för att spara batteri, och flödet avslutas
- * då normalt. Android begränsar dessutom hur ofta en app får starta nya skanningar.
+ * då normalt. Vid fel skickas felet och flödet avslutas direkt. Android begränsar dessutom hur ofta en app får starta nya skanningar.
  */
 class ScanForDevicesUseCase @Inject constructor(
     private val scanner: DeviceScanner,
@@ -29,7 +30,10 @@ class ScanForDevicesUseCase @Inject constructor(
         withTimeoutOrNull(SCAN_DURATION) {
             combine(scanner.scan(), savedAddresses()) { scan, saved ->
                 scan.map { devices -> devices.filterNot { it.address in saved }.sortedWith(strongestFirst) }
-            }.collect { emit(it) }
+            }
+                // Avsluta direkt vid fel. Annars håller flödet med sparade enheter igång combine.
+                .transformWhile { outcome -> emit(outcome); outcome is Outcome.Success }
+                .collect { emit(it) }
         }
     }
 
