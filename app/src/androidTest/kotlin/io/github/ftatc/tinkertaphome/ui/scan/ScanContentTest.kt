@@ -5,13 +5,10 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.ftatc.tinkertaphome.R
 import io.github.ftatc.tinkertaphome.domain.model.BleError
-import io.github.ftatc.tinkertaphome.domain.model.DeviceNames
-import io.github.ftatc.tinkertaphome.domain.model.SaveDeviceError
 import io.github.ftatc.tinkertaphome.domain.model.ScannedDevice
 import io.github.ftatc.tinkertaphome.domain.model.testScannedDevice
 import io.github.ftatc.tinkertaphome.ui.theme.TinkerTapTheme
@@ -29,9 +26,6 @@ class ScanContentTest {
 
     private var scanAgainClicked = false
     private var clickedDevice: ScannedDevice? = null
-    private var nameChanges = mutableListOf<String>()
-    private var saveConfirmed = false
-    private var saveDismissed = false
 
     private fun string(id: Int, vararg args: Any) =
         InstrumentationRegistry.getInstrumentation().targetContext.getString(id, *args)
@@ -43,9 +37,6 @@ class ScanContentTest {
                     uiState = uiState,
                     onScanAgain = { scanAgainClicked = true },
                     onDeviceClick = { clickedDevice = it },
-                    onNameChange = { nameChanges += it },
-                    onSaveConfirm = { saveConfirmed = true },
-                    onSaveDismiss = { saveDismissed = true },
                 )
             }
         }
@@ -112,39 +103,5 @@ class ScanContentTest {
         composeRule.onNodeWithText("Lampa").performClick()
 
         assertEquals(device, clickedDevice)
-    }
-
-    @Test
-    fun saveDialogShowsAddressAndNameAndReportsActions() {
-        val device = testScannedDevice(id = 1, name = "Lampa")
-        show(ScanUiState(saveDialog = SaveDialogState(device = device, name = "Lampa")))
-
-        composeRule.onNodeWithText(string(R.string.save_device_title)).assertIsDisplayed()
-        composeRule.onNodeWithText(device.address.value).assertIsDisplayed()
-        composeRule.onNodeWithText(string(R.string.save_device_name_label)).performTextInput("!")
-        composeRule.onNodeWithText(string(R.string.save_device_confirm)).performClick()
-        composeRule.onNodeWithText(string(R.string.save_device_cancel)).performClick()
-
-        assertTrue(nameChanges.isNotEmpty())
-        assertTrue(saveConfirmed)
-        assertTrue(saveDismissed)
-    }
-
-    @Test
-    fun saveDialogShowsTheError() {
-        val device = testScannedDevice(id = 1)
-        show(ScanUiState(saveDialog = SaveDialogState(device = device, name = "Lampa", error = SaveDeviceError.AlreadySaved)))
-
-        composeRule.onNodeWithText(string(R.string.save_device_error_already_saved)).assertIsDisplayed()
-    }
-
-    @Test
-    fun saveDialogShowsTheMaximumLengthWhenTheNameIsTooLong() {
-        val device = testScannedDevice(id = 1)
-        show(ScanUiState(saveDialog = SaveDialogState(device = device, name = "a", error = SaveDeviceError.NameTooLong)))
-
-        val message = InstrumentationRegistry.getInstrumentation().targetContext.resources
-            .getQuantityString(R.plurals.save_device_error_name_too_long, DeviceNames.MAX_LENGTH, DeviceNames.MAX_LENGTH)
-        composeRule.onNodeWithText(message).assertIsDisplayed()
     }
 }
