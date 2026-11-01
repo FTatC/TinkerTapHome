@@ -2,6 +2,7 @@ package io.github.ftatc.tinkertaphome.ui.devices
 
 import app.cash.turbine.test
 import io.github.ftatc.tinkertaphome.domain.model.Device
+import io.github.ftatc.tinkertaphome.domain.model.testDevice
 import io.github.ftatc.tinkertaphome.domain.repository.DeviceRepository
 import io.github.ftatc.tinkertaphome.domain.repository.FakeDeviceRepository
 import io.github.ftatc.tinkertaphome.domain.usecase.ObserveDevicesUseCase
@@ -18,8 +19,8 @@ class DeviceListViewModelTest {
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
 
-    private val lampa = Device(id = 1, address = "AA:BB:CC:DD:EE:01", name = "Lampa")
-    private val rela = Device(id = 2, address = "AA:BB:CC:DD:EE:02", name = "Relä")
+    private val lampa = testDevice(id = 1, name = "Lampa")
+    private val rela = testDevice(id = 2, name = "Relä")
 
     @Test
     fun `starts in loading until the first list arrives`() = runTest {
@@ -45,8 +46,9 @@ class DeviceListViewModelTest {
     }
 
     @Test
-    fun `shows devices sorted by name`() = runTest {
-        val viewModel = viewModelWith(listOf(rela, lampa))
+    fun `shows saved devices in the order the use case delivers them`() = runTest {
+        // Sorteringen testas i ObserveDevicesUseCaseTest. Här skickas listan in redan sorterad.
+        val viewModel = viewModelWith(listOf(lampa, rela))
 
         viewModel.uiState.test {
             assertEquals(DeviceListUiState.Content(listOf(lampa, rela)), awaitItem())

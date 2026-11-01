@@ -5,6 +5,7 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import app.cash.turbine.test
+import io.github.ftatc.tinkertaphome.domain.model.testAddress
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -18,6 +19,7 @@ class DeviceDaoTest {
 
     private lateinit var database: TinkerTapDatabase
     private lateinit var dao: DeviceDao
+    private val address = testAddress(1)
 
     @Before
     fun setUp() {
@@ -35,11 +37,11 @@ class DeviceDaoTest {
 
     @Test
     fun insertedDeviceIsObserved() = runTest {
-        val id = dao.insert(DeviceEntity(address = "AA:BB:CC:DD:EE:01", name = "Lampa"))
+        val id = dao.insert(DeviceEntity(address = address, name = "Lampa"))
 
         dao.observeAll().test {
             assertEquals(
-                listOf(DeviceEntity(id = id, address = "AA:BB:CC:DD:EE:01", name = "Lampa")),
+                listOf(DeviceEntity(id = id, address = address, name = "Lampa")),
                 awaitItem(),
             )
         }
@@ -47,10 +49,10 @@ class DeviceDaoTest {
 
     @Test
     fun insertingDuplicateAddressFails() = runTest {
-        dao.insert(DeviceEntity(address = "AA:BB:CC:DD:EE:01", name = "Lampa"))
+        dao.insert(DeviceEntity(address = address, name = "Lampa"))
 
         val result = runCatching {
-            dao.insert(DeviceEntity(address = "AA:BB:CC:DD:EE:01", name = "Kopia"))
+            dao.insert(DeviceEntity(address = address, name = "Kopia"))
         }
 
         assertTrue(result.exceptionOrNull() is SQLiteConstraintException)

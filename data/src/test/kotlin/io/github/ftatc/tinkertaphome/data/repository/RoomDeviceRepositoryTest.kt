@@ -4,6 +4,8 @@ import app.cash.turbine.test
 import io.github.ftatc.tinkertaphome.data.local.DeviceDao
 import io.github.ftatc.tinkertaphome.data.local.DeviceEntity
 import io.github.ftatc.tinkertaphome.domain.model.Device
+import io.github.ftatc.tinkertaphome.domain.model.testAddress
+import io.github.ftatc.tinkertaphome.domain.model.testDevice
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.runTest
@@ -17,15 +19,10 @@ class RoomDeviceRepositoryTest {
 
     @Test
     fun `maps entities to domain devices`() = runTest {
-        dao.entities.value = listOf(
-            DeviceEntity(id = 1, address = "AA:BB:CC:DD:EE:01", name = "Lampa"),
-        )
+        dao.entities.value = listOf(DeviceEntity(id = 1, address = testAddress(1), name = "Lampa"))
 
         repository.observeDevices().test {
-            assertEquals(
-                listOf(Device(id = 1, address = "AA:BB:CC:DD:EE:01", name = "Lampa")),
-                awaitItem(),
-            )
+            assertEquals(listOf(testDevice(id = 1, name = "Lampa")), awaitItem())
         }
     }
 
@@ -34,7 +31,7 @@ class RoomDeviceRepositoryTest {
         repository.observeDevices().test {
             assertEquals(emptyList<Device>(), awaitItem())
 
-            dao.entities.value = listOf(DeviceEntity(id = 2, address = "AA:BB:CC:DD:EE:02", name = "Relä"))
+            dao.entities.value = listOf(DeviceEntity(id = 2, address = testAddress(2), name = "Relä"))
 
             assertEquals(listOf("Relä"), awaitItem().map { it.name })
         }
@@ -45,10 +42,7 @@ class RoomDeviceRepositoryTest {
 
         override fun observeAll(): Flow<List<DeviceEntity>> = entities
 
-        override suspend fun insert(device: DeviceEntity): Long {
-            val id = device.id.takeIf { it != 0L } ?: (entities.value.size + 1L)
-            entities.value += device.copy(id = id)
-            return id
-        }
+        override suspend fun insert(device: DeviceEntity): Long =
+            throw NotImplementedError("RoomDeviceRepository skriver inte till DAO:n än")
     }
 }

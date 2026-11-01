@@ -2,6 +2,7 @@ package io.github.ftatc.tinkertaphome.domain.usecase
 
 import app.cash.turbine.test
 import io.github.ftatc.tinkertaphome.domain.model.Device
+import io.github.ftatc.tinkertaphome.domain.model.testDevice
 import io.github.ftatc.tinkertaphome.domain.repository.FakeDeviceRepository
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -22,9 +23,9 @@ class ObserveDevicesUseCaseTest {
     @Test
     fun `sorts devices by name ignoring case`() = runTest {
         repository.devices.value = listOf(
-            device(id = 1, name = "lampa"),
-            device(id = 2, name = "Bryggare"),
-            device(id = 3, name = "Relä"),
+            testDevice(id = 1, name = "lampa"),
+            testDevice(id = 2, name = "Bryggare"),
+            testDevice(id = 3, name = "Relä"),
         )
 
         observeDevices().test {
@@ -35,8 +36,8 @@ class ObserveDevicesUseCaseTest {
     @Test
     fun `devices with equal names are ordered by id`() = runTest {
         repository.devices.value = listOf(
-            device(id = 7, name = "Sensor"),
-            device(id = 3, name = "sensor"),
+            testDevice(id = 7, name = "Sensor"),
+            testDevice(id = 3, name = "sensor"),
         )
 
         observeDevices().test {
@@ -49,12 +50,9 @@ class ObserveDevicesUseCaseTest {
         observeDevices().test {
             assertEquals(emptyList<Device>(), awaitItem())
 
-            repository.devices.value = listOf(device(id = 1, name = "Lampa"))
+            repository.devices.value = listOf(testDevice(id = 1, name = "Lampa"))
 
             assertEquals(listOf("Lampa"), awaitItem().map { it.name })
         }
     }
-
-    private fun device(id: Long, name: String) =
-        Device(id = id, address = "AA:BB:CC:DD:EE:%02X".format(id), name = name)
 }
