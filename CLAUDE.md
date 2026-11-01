@@ -24,7 +24,7 @@ bygger egna enheter (ESP32, nRF52 och liknande) och vill ha ett enkelt gränssni
 | Beroendeinjektion | Hilt | Standard på Android, integrerar med ViewModel och livscykel. |
 | BLE | Android-plattformens `BluetoothLeScanner` / `BluetoothGatt` bakom ett eget abstraktionslager | Inga tredjepartsberoenden för kärnfunktionen; abstraktionen gör att BLE kan mockas i tester. |
 | Lokal lagring | Room (enheter, rum, scener) + DataStore (inställningar) | Offline-först; inget moln behövs. |
-| Bygg | Gradle Kotlin DSL + Version Catalog (`gradle/libs.versions.toml`) | En plats för alla versioner. |
+| Bygg | Gradle Kotlin DSL + Version Catalog (`gradle/libs.versions.toml`) + konventionsplugins i `build-logic/` | En plats för alla versioner och en plats för gemensam modulkonfiguration. |
 | Test | JUnit, Turbine (Flow), MockK, Compose UI-test | Täcker ViewModels, repositories och UI. |
 
 **Min SDK:** 34 (Android 14). **Target SDK:** 37. Alla versioner, även SDK-nivåerna, finns i `gradle/libs.versions.toml`.
@@ -39,6 +39,16 @@ Koden delas i tre lager, och varje lager är en egen Gradle-modul. Beroenden gå
 - **`:app`** (paket `…tinkertaphome.ui`): Composables, ViewModels, `Application` och `MainActivity`. Ingen direkt åtkomst till BLE, databas eller Android-system-API:er. Enda undantaget är behörighetsflödet (se Regler). Beror på `:domain`, och på `:data` enbart för att Hilt ska hitta dess moduler. Klasser i `:data` används aldrig direkt från `:app`.
 - **`:domain`** (Kotlin/JVM-modul, paket `…tinkertaphome.domain`): Modeller, use cases och repository-interface. Ren Kotlin utan Android-importer. Enda tillåtna beroenden är `kotlinx-coroutines-core` och `javax.inject` (för `@Inject` på use cases). Fakes som delas mellan modulernas tester ligger i `src/testFixtures`.
 - **`:data`** (Android-biblioteksmodul, paket `…tinkertaphome.data`): Repository-implementationer, BLE-klient, Room-DAO:er, DataStore och Hilt-moduler som binder implementationerna till interfacen i `:domain`. **Allt i `:data` är `internal`**: klasser, interface, DAO:er, entiteter och toppnivåfunktioner. `:app` kommer bara åt datalagret via interfacen i `:domain`, och Hilt sköter kopplingen. Nya deklarationer i `:data` ska också vara `internal`, annars kan UI-lagret gå förbi `domain`.
+
+**Byggkonfiguration:** Gemensamma inställningar (SDK-nivåer, Java-version, testkörare och standardtestberoenden: JUnit, coroutines-test, Turbine, AndroidX Test) ligger i konventionspluginsen i `build-logic/convention/`:
+
+| Plugin | Används av |
+|---|---|
+| `tinkertap.android.application` | `:app` |
+| `tinkertap.android.library` | `:data` och nya Android-moduler |
+| `tinkertap.jvm.library` | `:domain` och nya rena Kotlin-moduler |
+
+Nya moduler använder ett av pluginsen. Kopiera inte `compileSdk`, `minSdk`, `compileOptions` eller standardtestberoenden till en moduls `build.gradle.kts`. Modulen sätter bara det som är unikt för den, till exempel namespace och egna beroenden.
 
 ### Regler
 - **All I/O sker i `data`-lagret.** BLE, databas, filer och nätverk anropas aldrig från `ui` eller `domain`.
