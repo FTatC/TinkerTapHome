@@ -2,8 +2,10 @@ package io.github.ftatc.tinkertaphome.ui.devices
 
 import app.cash.turbine.test
 import io.github.ftatc.tinkertaphome.domain.Outcome
+import io.github.ftatc.tinkertaphome.domain.model.BleAddress
 import io.github.ftatc.tinkertaphome.domain.model.Device
 import io.github.ftatc.tinkertaphome.domain.model.DeviceError
+import io.github.ftatc.tinkertaphome.domain.model.SaveDeviceError
 import io.github.ftatc.tinkertaphome.domain.model.testDevice
 import io.github.ftatc.tinkertaphome.domain.repository.DeviceRepository
 import io.github.ftatc.tinkertaphome.domain.repository.FakeDeviceRepository
@@ -89,5 +91,7 @@ class DeviceListViewModelTest {
         private val flow = MutableSharedFlow<Outcome<List<Device>, DeviceError>>()
         override fun observeDevices(): Flow<Outcome<List<Device>, DeviceError>> = flow
         suspend fun emit(outcome: Outcome<List<Device>, DeviceError>) = flow.emit(outcome)
+        override suspend fun save(address: BleAddress, name: String): Outcome<Device, SaveDeviceError> =
+            throw NotImplementedError("Enhetslistan sparar inga enheter")
     }
 }

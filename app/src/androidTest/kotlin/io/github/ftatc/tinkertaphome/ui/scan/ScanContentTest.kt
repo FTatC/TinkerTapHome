@@ -5,12 +5,16 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.ftatc.tinkertaphome.R
 import io.github.ftatc.tinkertaphome.domain.model.BleError
+import io.github.ftatc.tinkertaphome.domain.model.SaveDeviceError
+import io.github.ftatc.tinkertaphome.domain.model.ScannedDevice
 import io.github.ftatc.tinkertaphome.domain.model.testScannedDevice
 import io.github.ftatc.tinkertaphome.ui.theme.TinkerTapTheme
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -23,13 +27,26 @@ class ScanContentTest {
     val composeRule = createComposeRule()
 
     private var scanAgainClicked = false
+    private var clickedDevice: ScannedDevice? = null
+    private var nameChanges = mutableListOf<String>()
+    private var saveConfirmed = false
+    private var saveDismissed = false
 
     private fun string(id: Int, vararg args: Any) =
         InstrumentationRegistry.getInstrumentation().targetContext.getString(id, *args)
 
     private fun show(uiState: ScanUiState) {
         composeRule.setContent {
-            TinkerTapTheme { ScanContent(uiState = uiState, onScanAgain = { scanAgainClicked = true }) }
+            TinkerTapTheme {
+                ScanContent(
+                    uiState = uiState,
+                    onScanAgain = { scanAgainClicked = true },
+                    onDeviceClick = { clickedDevice = it },
+                    onNameChange = { nameChanges += it },
+                    onSaveConfirm = { saveConfirmed = true },
+                    onSaveDismiss = { saveDismissed = true },
+                )
+            }
         }
     }
 
@@ -84,5 +101,39 @@ class ScanContentTest {
         show(ScanUiState(error = BleError.ScanFailed(code = 2)))
 
         composeRule.onNodeWithText(string(R.string.scan_error_failed, 2)).assertIsDisplayed()
+    }
+
+    @Test
+    fun clickingAFoundDeviceReportsIt() {
+        val device = testScannedDevice(id = 1, name = "Lampa")
+        show(ScanUiState(devices = listOf(device)))
+
+        composeRule.onNodeWithText("Lampa").performClick()
+
+        assertEquals(device, clickedDevice)
+    }
+
+    @Test
+    fun saveDialogShowsAddressAndNameAndReportsActions() {
+        val device = testScannedDevice(id = 1, name = "Lampa")
+        show(ScanUiState(saveDialog = SaveDialogState(device = device, name = "Lampa")))
+
+        composeRule.onNodeWithText(string(R.string.save_device_title)).assertIsDisplayed()
+        composeRule.onNodeWithText(device.address.value).assertIsDisplayed()
+        composeRule.onNodeWithText(string(R.string.save_device_name_label)).performTextInput("!")
+        composeRule.onNodeWithText(string(R.string.save_device_confirm)).performClick()
+        composeRule.onNodeWithText(string(R.string.save_device_cancel)).performClick()
+
+        assertTrue(nameChanges.isNotEmpty())
+        assertTrue(saveConfirmed)
+        assertTrue(saveDismissed)
+    }
+
+    @Test
+    fun saveDialogShowsTheError() {
+        val device = testScannedDevice(id = 1)
+        show(ScanUiState(saveDialog = SaveDialogState(device = device, name = "Lampa", error = SaveDeviceError.AlreadySaved)))
+
+        composeRule.onNodeWithText(string(R.string.save_device_error_already_saved)).assertIsDisplayed()
     }
 }

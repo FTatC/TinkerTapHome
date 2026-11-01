@@ -18,14 +18,17 @@ fun TinkerTapNavHost(
     deviceListScreen: @Composable (onScanClick: () -> Unit) -> Unit = { onScanClick ->
         DeviceListScreen(onScanClick = onScanClick)
     },
-    scanScreen: @Composable () -> Unit = { ScanScreen() },
+    scanScreen: @Composable (onDeviceSaved: () -> Unit) -> Unit = { onDeviceSaved ->
+        ScanScreen(onDeviceSaved = onDeviceSaved)
+    },
 ) {
     NavHost(navController = navController, startDestination = DeviceListRoute) {
         composable<DeviceListRoute> {
             deviceListScreen { navController.navigate(ScanRoute) }
         }
         composable<ScanRoute> {
-            scanScreen()
+            // När enheten är sparad går appen tillbaka till listan, där den nya enheten syns.
+            scanScreen { navController.popBackStack() }
         }
     }
 }

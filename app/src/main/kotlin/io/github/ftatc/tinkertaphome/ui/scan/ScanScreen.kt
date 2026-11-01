@@ -1,5 +1,6 @@
 package io.github.ftatc.tinkertaphome.ui.scan
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,6 +19,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -41,7 +43,10 @@ import io.github.ftatc.tinkertaphome.ui.theme.TinkerTapTheme
  * inte längre syns, så att den inte drar batteri i bakgrunden.
  */
 @Composable
-fun ScanScreen(viewModel: ScanViewModel = hiltViewModel()) {
+fun ScanScreen(
+    onDeviceSaved: () -> Unit,
+    viewModel: ScanViewModel = hiltViewModel(),
+) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     LifecycleStartEffect(viewModel) {
@@ -49,12 +54,31 @@ fun ScanScreen(viewModel: ScanViewModel = hiltViewModel()) {
         onStopOrDispose { viewModel.stopScan() }
     }
 
-    ScanContent(uiState = uiState, onScanAgain = viewModel::startScan)
+    LaunchedEffect(uiState.savedDevice) {
+        if (uiState.savedDevice != null) onDeviceSaved()
+    }
+
+    ScanContent(
+        uiState = uiState,
+        onScanAgain = viewModel::startScan,
+        onDeviceClick = viewModel::onDeviceClick,
+        onNameChange = viewModel::onNameChange,
+        onSaveConfirm = viewModel::onSaveConfirm,
+        onSaveDismiss = viewModel::onSaveDismiss,
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ScanContent(uiState: ScanUiState, onScanAgain: () -> Unit, modifier: Modifier = Modifier) {
+fun ScanContent(
+    uiState: ScanUiState,
+    onScanAgain: () -> Unit,
+    onDeviceClick: (ScannedDevice) -> Unit,
+    onNameChange: (String) -> Unit,
+    onSaveConfirm: () -> Unit,
+    onSaveDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Scaffold(
         modifier = modifier,
         topBar = { TopAppBar(title = { Text(stringResource(R.string.scan_title)) }) },
@@ -62,11 +86,14 @@ fun ScanContent(uiState: ScanUiState, onScanAgain: () -> Unit, modifier: Modifie
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
             ScanStatus(uiState, onScanAgain)
             when {
-                uiState.devices.isNotEmpty() -> FoundDevices(uiState.devices)
+                uiState.devices.isNotEmpty() -> FoundDevices(uiState.devices, onDeviceClick)
                 uiState.isScanning -> CenteredText(stringResource(R.string.scan_searching))
                 uiState.error == null -> CenteredText(stringResource(R.string.scan_none_found))
             }
         }
+    }
+    uiState.saveDialog?.let { dialog ->
+        SaveDeviceDialog(dialog, onNameChange, onSaveConfirm, onSaveDismiss)
     }
 }
 
@@ -104,10 +131,11 @@ private fun errorMessage(error: BleError): String = when (error) {
 }
 
 @Composable
-private fun FoundDevices(devices: List<ScannedDevice>) {
+private fun FoundDevices(devices: List<ScannedDevice>, onDeviceClick: (ScannedDevice) -> Unit) {
     LazyColumn {
         items(devices, key = { it.address.value }) { device ->
             ListItem(
+                modifier = Modifier.clickable { onDeviceClick(device) },
                 headlineContent = { Text(device.name ?: stringResource(R.string.scan_unknown_device)) },
                 supportingContent = { Text(device.address.value) },
                 trailingContent = { Text(stringResource(R.string.scan_rssi, device.rssi)) },
@@ -136,6 +164,10 @@ private fun ScanContentPreview() {
                 isScanning = true,
             ),
             onScanAgain = {},
+            onDeviceClick = {},
+            onNameChange = {},
+            onSaveConfirm = {},
+            onSaveDismiss = {},
         )
     }
 }
