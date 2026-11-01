@@ -52,7 +52,7 @@ Ordningen är vald så att datamodellen är rättad innan BLE-koden börjar anv�
 - **Schemat ändras inte**, eftersom kolumnen fortfarande är `TEXT`. Adresser normaliseras när de skrivs, så det behövs ingen migration.
 - **Tester:** `BleAddressTest` med gemener, fel längd, fel avgränsare och giltig adress. Mappningstesterna uppdateras.
 - **Regressionstest:** `"aa:bb:…"` och `"AA:BB:…"` ger samma `BleAddress`.
-- 🔶 **Roterande privata adresser:** planen förutsätter att enheter **parkopplas (bondas)**. Då ger Android en stabil identitetsadress. Gäller det era egna ESP32- och nRF52-enheter? Om inte behövs en egen identifierare i reklampaketet, och det påverkar BLE-protokollet.
+- ✅ **Beslut (2026-11-01): enheterna parkopplas (bondas).** Android ger då en stabil identitetsadress, så BLE-adressen används som enhetens identitet och är unik i databasen. Parkopplingen görs när enheten ansluts i fas 5. Ingen egen identifierare i reklampaketet behövs.
 
 ### 1.4 Fel som data i enhetslistan: `fix/device-list-error-state`
 - **Ny:** `domain/.../domain/model/DeviceError.kt`: `sealed interface DeviceError { data object StorageUnavailable }`.

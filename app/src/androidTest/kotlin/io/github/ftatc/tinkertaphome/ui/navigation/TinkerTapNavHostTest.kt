@@ -25,7 +25,9 @@ class TinkerTapNavHostTest {
                 deviceListScreen = { onScanClick ->
                     Button(onClick = onScanClick) { Text(DEVICE_LIST) }
                 },
-                scanScreen = { Text(SCAN) },
+                scanScreen = { onDeviceSaved ->
+                    Button(onClick = onDeviceSaved) { Text(SCAN) }
+                },
             )
         }
     }
@@ -55,6 +57,18 @@ class TinkerTapNavHostTest {
         composeRule.onNodeWithText(SCAN).assertIsDisplayed()
 
         composeRule.runOnUiThread { composeRule.activity.onBackPressedDispatcher.onBackPressed() }
+
+        composeRule.onNodeWithText(DEVICE_LIST).assertIsDisplayed()
+        composeRule.onNodeWithText(SCAN).assertDoesNotExist()
+    }
+
+    @Test
+    fun savingADeviceReturnsToTheDeviceList() {
+        showNavHost()
+        composeRule.onNodeWithText(DEVICE_LIST).performClick()
+        composeRule.onNodeWithText(SCAN).assertIsDisplayed()
+
+        composeRule.onNodeWithText(SCAN).performClick()
 
         composeRule.onNodeWithText(DEVICE_LIST).assertIsDisplayed()
         composeRule.onNodeWithText(SCAN).assertDoesNotExist()

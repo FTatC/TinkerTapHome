@@ -1,10 +1,14 @@
 package io.github.ftatc.tinkertaphome.data.repository
 
+import android.database.sqlite.SQLiteConstraintException
 import io.github.ftatc.tinkertaphome.data.local.DeviceDao
+import io.github.ftatc.tinkertaphome.data.local.DeviceEntity
 import io.github.ftatc.tinkertaphome.data.local.toDomain
 import io.github.ftatc.tinkertaphome.domain.Outcome
+import io.github.ftatc.tinkertaphome.domain.model.BleAddress
 import io.github.ftatc.tinkertaphome.domain.model.Device
 import io.github.ftatc.tinkertaphome.domain.model.DeviceError
+import io.github.ftatc.tinkertaphome.domain.model.SaveDeviceError
 import io.github.ftatc.tinkertaphome.domain.repository.DeviceRepository
 import javax.inject.Inject
 import kotlin.coroutines.cancellation.CancellationException
@@ -22,6 +26,19 @@ internal class RoomDeviceRepository @Inject constructor(
                 Outcome.Success(entities.mapNotNull { it.toDomain() })
             }
             .catch { cause -> emit(cause.toStorageFailure()) }
+
+    override suspend fun save(address: BleAddress, name: String): Outcome<Device, SaveDeviceError> =
+        try {
+            val id = dao.insert(DeviceEntity(address = address.value, name = name))
+            Outcome.Success(Device(id = id, address = address, name = name))
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: SQLiteConstraintException) {
+            // Det enda villkor som kan brytas vid insert är det unika indexet på adressen.
+            Outcome.Failure(SaveDeviceError.AlreadySaved)
+        } catch (e: Exception) {
+            Outcome.Failure(SaveDeviceError.StorageUnavailable)
+        }
 }
 
 /**

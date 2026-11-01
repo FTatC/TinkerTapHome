@@ -7,6 +7,7 @@ import io.github.ftatc.tinkertaphome.data.local.DeviceEntity
 import io.github.ftatc.tinkertaphome.domain.Outcome
 import io.github.ftatc.tinkertaphome.domain.model.Device
 import io.github.ftatc.tinkertaphome.domain.model.DeviceError
+import io.github.ftatc.tinkertaphome.domain.model.SaveDeviceError
 import io.github.ftatc.tinkertaphome.domain.model.testAddress
 import io.github.ftatc.tinkertaphome.domain.model.testDevice
 import kotlin.coroutines.cancellation.CancellationException
@@ -85,6 +86,30 @@ class RoomDeviceRepositoryTest {
         assertTrue(result.exceptionOrNull() is CancellationException)
     }
 
+    @Test
+    fun `save inserts the device and returns it with the new id`() = runTest {
+        val result = repository.save(testAddress(1), "Lampa")
+
+        assertEquals(Outcome.Success(testDevice(id = 1, name = "Lampa")), result)
+        assertEquals(listOf(DeviceEntity(address = testAddress(1).value, name = "Lampa")), dao.inserted)
+    }
+
+    @Test
+    fun `save turns a storage exception into a failure`() = runTest {
+        dao.insertFailure = IllegalStateException("Disken är full")
+
+        assertEquals(Outcome.Failure(SaveDeviceError.StorageUnavailable), repository.save(testAddress(1), "Lampa"))
+    }
+
+    @Test
+    fun `save does not swallow cancellation`() = runTest {
+        dao.insertFailure = CancellationException("avbruten")
+
+        val result = runCatching { repository.save(testAddress(1), "Lampa") }
+
+        assertTrue(result.exceptionOrNull() is CancellationException)
+    }
+
     private suspend fun ReceiveTurbine<Outcome<List<Device>, DeviceError>>.awaitDevices(): List<Device> {
         val outcome = awaitItem()
         check(outcome is Outcome.Success) { "Förväntade Success men fick $outcome" }
@@ -100,7 +125,15 @@ class RoomDeviceRepositoryTest {
         override fun observeAll(): Flow<List<DeviceEntity>> =
             failure?.let { error -> flow { throw error } } ?: entities
 
-        override suspend fun insert(device: DeviceEntity): Long =
-            throw NotImplementedError("RoomDeviceRepository skriver inte till DAO:n än")
+        /** Sätts för att låta [insert] kasta. */
+        var insertFailure: Throwable? = null
+
+        val inserted = mutableListOf<DeviceEntity>()
+
+        override suspend fun insert(device: DeviceEntity): Long {
+            insertFailure?.let { throw it }
+            inserted += device
+            return inserted.size.toLong()
+        }
     }
 }

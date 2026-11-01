@@ -16,6 +16,13 @@
     <string name="scan_error_bluetooth_off">Bluetooth är avstängt. Slå på det och försök igen.</string>
     <string name="scan_error_permission">Bluetooth-åtkomst saknas.</string>
     <string name="scan_error_failed">Sökningen misslyckades (fel %1$d).</string>
+    <string name="save_device_title">Spara enhet</string>
+    <string name="save_device_name_label">Namn</string>
+    <string name="save_device_confirm">Spara</string>
+    <string name="save_device_cancel">Avbryt</string>
+    <string name="save_device_error_name_missing">Ange ett namn</string>
+    <string name="save_device_error_already_saved">Enheten är redan sparad</string>
+    <string name="save_device_error_storage">Det gick inte att spara enheten</string>
     <string name="permission_ble_title">Appen behöver Bluetooth-åtkomst</string>
     <string name="permission_ble_rationale">TinkerTap Home hittar och styr dina enheter via Bluetooth. Din plats används aldrig.</string>
     <string name="permission_ble_rationale_denied">Utan Bluetooth-åtkomst kan appen inte hitta eller styra några enheter.</string>

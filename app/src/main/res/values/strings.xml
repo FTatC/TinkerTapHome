@@ -18,6 +18,13 @@
     <string name="scan_error_bluetooth_off">Bluetooth is off. Turn it on and try again.</string>
     <string name="scan_error_permission">Bluetooth access is missing.</string>
     <string name="scan_error_failed">The search failed (error %1$d).</string>
+    <string name="save_device_title">Save device</string>
+    <string name="save_device_name_label">Name</string>
+    <string name="save_device_confirm">Save</string>
+    <string name="save_device_cancel">Cancel</string>
+    <string name="save_device_error_name_missing">Enter a name</string>
+    <string name="save_device_error_already_saved">This device is already saved</string>
+    <string name="save_device_error_storage">Couldn\'t save the device</string>
     <string name="permission_ble_title">Bluetooth access needed</string>
     <string name="permission_ble_rationale">TinkerTap Home finds and controls your devices over Bluetooth. Your location is never used.</string>
     <string name="permission_ble_rationale_denied">Without Bluetooth access the app can\'t find or control any devices.</string>

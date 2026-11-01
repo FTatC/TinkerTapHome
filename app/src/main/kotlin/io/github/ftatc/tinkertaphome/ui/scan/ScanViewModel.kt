@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.ftatc.tinkertaphome.domain.Outcome
+import io.github.ftatc.tinkertaphome.domain.model.ScannedDevice
+import io.github.ftatc.tinkertaphome.domain.usecase.SaveDeviceUseCase
 import io.github.ftatc.tinkertaphome.domain.usecase.ScanForDevicesUseCase
 import javax.inject.Inject
 import kotlinx.coroutines.Job
@@ -16,6 +18,7 @@ import kotlinx.coroutines.launch
 @HiltViewModel
 class ScanViewModel @Inject constructor(
     private val scanForDevices: ScanForDevicesUseCase,
+    private val saveDevice: SaveDeviceUseCase,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ScanUiState())
@@ -23,10 +26,13 @@ class ScanViewModel @Inject constructor(
 
     private var scanJob: Job? = null
 
-    /** Startar en ny skanning. En pågående skanning ersätts. Hittade enheter rensas. */
+    /**
+     * Startar en ny skanning. En pågående skanning ersätts och tidigare resultat rensas.
+     * En öppen namndialog ligger kvar, eftersom skanningen startas om varje gång skärmen blir synlig.
+     */
     fun startScan() {
         scanJob?.cancel()
-        _uiState.value = ScanUiState(isScanning = true)
+        _uiState.update { it.copy(devices = emptyList(), isScanning = true, error = null) }
         scanJob = viewModelScope.launch {
             scanForDevices().collect { outcome ->
                 when (outcome) {
@@ -43,5 +49,36 @@ class ScanViewModel @Inject constructor(
         scanJob?.cancel()
         scanJob = null
         _uiState.update { it.copy(isScanning = false) }
+    }
+
+    /** Öppnar namndialogen för [device], med enhetens annonserade namn som förslag. */
+    fun onDeviceClick(device: ScannedDevice) {
+        _uiState.update { it.copy(saveDialog = SaveDialogState(device = device, name = device.name.orEmpty())) }
+    }
+
+    fun onNameChange(name: String) {
+        _uiState.update { state -> state.copy(saveDialog = state.saveDialog?.copy(name = name, error = null)) }
+    }
+
+    fun onSaveDismiss() {
+        _uiState.update { it.copy(saveDialog = null) }
+    }
+
+    /** Sparar enheten i dialogen. Vid fel ligger dialogen kvar och visar felet. */
+    fun onSaveConfirm() {
+        val dialog = _uiState.value.saveDialog ?: return
+        if (dialog.isSaving) return
+        _uiState.update { it.copy(saveDialog = dialog.copy(isSaving = true, error = null)) }
+        viewModelScope.launch {
+            when (val result = saveDevice(dialog.device.address, dialog.name)) {
+                is Outcome.Success -> {
+                    stopScan()
+                    _uiState.update { it.copy(saveDialog = null, savedDevice = result.value) }
+                }
+                is Outcome.Failure -> _uiState.update { state ->
+                    state.copy(saveDialog = state.saveDialog?.copy(isSaving = false, error = result.error))
+                }
+            }
+        }
     }
 }
