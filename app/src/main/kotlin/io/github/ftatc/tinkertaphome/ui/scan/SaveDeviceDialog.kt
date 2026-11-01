@@ -8,9 +8,11 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import io.github.ftatc.tinkertaphome.R
+import io.github.ftatc.tinkertaphome.domain.model.DeviceNames
 import io.github.ftatc.tinkertaphome.domain.model.SaveDeviceError
 
 /** Dialog där användaren väljer namn på en hittad enhet och sparar den. */
@@ -51,6 +53,11 @@ internal fun SaveDeviceDialog(
 @Composable
 private fun saveErrorMessage(error: SaveDeviceError): String = when (error) {
     SaveDeviceError.NameMissing -> stringResource(R.string.save_device_error_name_missing)
+    SaveDeviceError.NameTooLong -> pluralStringResource(
+        R.plurals.save_device_error_name_too_long,
+        DeviceNames.MAX_LENGTH,
+        DeviceNames.MAX_LENGTH,
+    )
     SaveDeviceError.AlreadySaved -> stringResource(R.string.save_device_error_already_saved)
     SaveDeviceError.StorageUnavailable -> stringResource(R.string.save_device_error_storage)
 }

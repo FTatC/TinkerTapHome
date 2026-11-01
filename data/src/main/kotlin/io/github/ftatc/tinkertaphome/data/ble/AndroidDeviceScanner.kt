@@ -8,7 +8,6 @@ import io.github.ftatc.tinkertaphome.domain.repository.BlePermissionChecker
 import io.github.ftatc.tinkertaphome.domain.repository.DeviceScanner
 import javax.inject.Inject
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.transformWhile
@@ -29,9 +28,6 @@ internal class AndroidDeviceScanner @Inject constructor(
                 emitAll(foundDevices())
             }
         }
-    }.catch { cause ->
-        // Behörigheten kan tas bort medan skanningen pågår. Android kastar då SecurityException.
-        if (cause is SecurityException) emit(Outcome.Failure(BleError.PermissionMissing)) else throw cause
     }
 
     /** Samlar unika enheter per adress och skickar hela listan efter varje ändring. Avslutas vid fel. */
@@ -40,14 +36,18 @@ internal class AndroidDeviceScanner @Inject constructor(
         return source.scanEvents().transformWhile { event ->
             when (event) {
                 is RawScanEvent.Result -> {
-                    event.toScannedDevice()?.let { device ->
-                        found[device.address] = device.keepingNameFrom(found[device.address])
+                    val device = event.toScannedDevice()
+                    if (device != null && found.addOrUpdate(device)) {
                         emit(Outcome.Success(found.values.toList()))
                     }
                     true
                 }
                 RawScanEvent.Unavailable -> {
                     emit(Outcome.Failure(BleError.BluetoothOff))
+                    false
+                }
+                RawScanEvent.PermissionDenied -> {
+                    emit(Outcome.Failure(BleError.PermissionMissing))
                     false
                 }
                 is RawScanEvent.Failed -> {
@@ -57,6 +57,28 @@ internal class AndroidDeviceScanner @Inject constructor(
             }
         }
     }
+
+    companion object {
+        /** Högsta antal enheter i listan. Skyddar mot enheter som skickar paket med slumpade adresser. */
+        const val MAX_FOUND_DEVICES = 100
+    }
+}
+
+/**
+ * Lägger till eller uppdaterar [device] och returnerar `true` om listan ändrades.
+ *
+ * En känd enhet uppdateras alltid. Är listan full ersätter en ny enhet den med svagast signal, men
+ * bara om den nya har starkare signal. Annars ignoreras den.
+ */
+private fun MutableMap<BleAddress, ScannedDevice>.addOrUpdate(device: ScannedDevice): Boolean {
+    val known = this[device.address]
+    if (known == null && size >= AndroidDeviceScanner.MAX_FOUND_DEVICES) {
+        val weakest = values.minBy { it.rssi }
+        if (device.rssi <= weakest.rssi) return false
+        remove(weakest.address)
+    }
+    this[device.address] = device.keepingNameFrom(known)
+    return true
 }
 
 /** Annonserar enheten inget namn i ett paket behålls namnet från ett tidigare paket. */

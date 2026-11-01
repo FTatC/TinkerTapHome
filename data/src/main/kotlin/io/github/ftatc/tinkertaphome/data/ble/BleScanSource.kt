@@ -23,6 +23,9 @@ internal sealed interface RawScanEvent {
     /** Skannern kunde inte startas, till exempel för att Bluetooth stängdes av. */
     data object Unavailable : RawScanEvent
 
+    /** Android nekade skanningen eftersom BLE-behörigheten saknas. */
+    data object PermissionDenied : RawScanEvent
+
     /** Skannern rapporterade ett fel. [errorCode] är ett av `ScanCallback.SCAN_FAILED_*`. */
     data class Failed(val errorCode: Int) : RawScanEvent
 }

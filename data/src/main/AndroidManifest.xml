@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    :data använder BLE och deklarerar därför samma behörigheter som appen (se app/src/main/AndroidManifest.xml).
+    Det slutliga manifestet blir detsamma, men lint kan då kontrollera BLE-anropen i den här modulen.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission
+        android:name="android.permission.BLUETOOTH_SCAN"
+        android:usesPermissionFlags="neverForLocation" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+</manifest>

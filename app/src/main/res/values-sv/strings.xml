@@ -21,6 +21,10 @@
     <string name="save_device_confirm">Spara</string>
     <string name="save_device_cancel">Avbryt</string>
     <string name="save_device_error_name_missing">Ange ett namn</string>
+    <plurals name="save_device_error_name_too_long">
+        <item quantity="one">Namnet får vara högst %1$d tecken</item>
+        <item quantity="other">Namnet får vara högst %1$d tecken</item>
+    </plurals>
     <string name="save_device_error_already_saved">Enheten är redan sparad</string>
     <string name="save_device_error_storage">Det gick inte att spara enheten</string>
     <string name="permission_ble_title">Appen behöver Bluetooth-åtkomst</string>
@@ -29,4 +33,5 @@
     <string name="permission_ble_grant">Tillåt Bluetooth</string>
     <string name="permission_ble_permanently_denied">Bluetooth-åtkomst är avstängd för TinkerTap Home. Slå på ”Enheter i närheten” i appens inställningar.</string>
     <string name="permission_ble_open_settings">Öppna inställningar</string>
+    <string name="permission_ble_settings_unavailable">Appens inställningar gick inte att öppna. Öppna appen Inställningar, gå till Appar › TinkerTap Home › Behörigheter och tillåt ”Enheter i närheten”.</string>
 </resources>
