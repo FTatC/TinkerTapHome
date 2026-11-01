@@ -1,7 +1,10 @@
 package io.github.ftatc.tinkertaphome.domain.usecase
 
+import app.cash.turbine.ReceiveTurbine
 import app.cash.turbine.test
+import io.github.ftatc.tinkertaphome.domain.Outcome
 import io.github.ftatc.tinkertaphome.domain.model.Device
+import io.github.ftatc.tinkertaphome.domain.model.DeviceError
 import io.github.ftatc.tinkertaphome.domain.model.testDevice
 import io.github.ftatc.tinkertaphome.domain.repository.FakeDeviceRepository
 import kotlinx.coroutines.test.runTest
@@ -16,7 +19,7 @@ class ObserveDevicesUseCaseTest {
     @Test
     fun `emits empty list when no devices are saved`() = runTest {
         observeDevices().test {
-            assertEquals(emptyList<Device>(), awaitItem())
+            assertEquals(Outcome.Success(emptyList<Device>()), awaitItem())
         }
     }
 
@@ -29,7 +32,7 @@ class ObserveDevicesUseCaseTest {
         )
 
         observeDevices().test {
-            assertEquals(listOf("Bryggare", "lampa", "Relä"), awaitItem().map { it.name })
+            assertEquals(listOf("Bryggare", "lampa", "Relä"), awaitDevices().map { it.name })
         }
     }
 
@@ -41,18 +44,33 @@ class ObserveDevicesUseCaseTest {
         )
 
         observeDevices().test {
-            assertEquals(listOf(3L, 7L), awaitItem().map { it.id })
+            assertEquals(listOf(3L, 7L), awaitDevices().map { it.id })
         }
     }
 
     @Test
     fun `emits again when the repository changes`() = runTest {
         observeDevices().test {
-            assertEquals(emptyList<Device>(), awaitItem())
+            assertEquals(emptyList<Device>(), awaitDevices())
 
             repository.devices.value = listOf(testDevice(id = 1, name = "Lampa"))
 
-            assertEquals(listOf("Lampa"), awaitItem().map { it.name })
+            assertEquals(listOf("Lampa"), awaitDevices().map { it.name })
         }
+    }
+
+    @Test
+    fun `passes storage errors through`() = runTest {
+        repository.error.value = DeviceError.StorageUnavailable
+
+        observeDevices().test {
+            assertEquals(Outcome.Failure(DeviceError.StorageUnavailable), awaitItem())
+        }
+    }
+
+    private suspend fun ReceiveTurbine<Outcome<List<Device>, DeviceError>>.awaitDevices(): List<Device> {
+        val outcome = awaitItem()
+        check(outcome is Outcome.Success) { "Förväntade Success men fick $outcome" }
+        return outcome.value
     }
 }

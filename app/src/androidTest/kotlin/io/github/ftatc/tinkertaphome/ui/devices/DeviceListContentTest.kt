@@ -7,6 +7,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.ftatc.tinkertaphome.R
+import io.github.ftatc.tinkertaphome.domain.model.DeviceError
 import io.github.ftatc.tinkertaphome.domain.model.testDevice
 import io.github.ftatc.tinkertaphome.ui.theme.TinkerTapTheme
 import org.junit.Rule
@@ -39,6 +40,13 @@ class DeviceListContentTest {
         show(DeviceListUiState.Empty)
 
         composeRule.onNodeWithText(string(R.string.devices_empty)).assertIsDisplayed()
+    }
+
+    @Test
+    fun errorStateShowsStorageErrorMessage() {
+        show(DeviceListUiState.Error(DeviceError.StorageUnavailable))
+
+        composeRule.onNodeWithText(string(R.string.devices_error_storage)).assertIsDisplayed()
     }
 
     @Test

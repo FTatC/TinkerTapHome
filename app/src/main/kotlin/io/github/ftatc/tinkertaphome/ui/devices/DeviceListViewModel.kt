@@ -3,7 +3,9 @@ package io.github.ftatc.tinkertaphome.ui.devices
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import io.github.ftatc.tinkertaphome.domain.Outcome
 import io.github.ftatc.tinkertaphome.domain.model.Device
+import io.github.ftatc.tinkertaphome.domain.model.DeviceError
 import io.github.ftatc.tinkertaphome.domain.usecase.ObserveDevicesUseCase
 import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
@@ -17,7 +19,7 @@ class DeviceListViewModel @Inject constructor(
 ) : ViewModel() {
 
     val uiState: StateFlow<DeviceListUiState> = observeDevices()
-        .map { devices -> devices.toDeviceListUiState() }
+        .map { outcome -> outcome.toDeviceListUiState() }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
@@ -30,5 +32,7 @@ class DeviceListViewModel @Inject constructor(
     }
 }
 
-private fun List<Device>.toDeviceListUiState(): DeviceListUiState =
-    if (isEmpty()) DeviceListUiState.Empty else DeviceListUiState.Content(this)
+private fun Outcome<List<Device>, DeviceError>.toDeviceListUiState(): DeviceListUiState = when (this) {
+    is Outcome.Success -> if (value.isEmpty()) DeviceListUiState.Empty else DeviceListUiState.Content(value)
+    is Outcome.Failure -> DeviceListUiState.Error(error)
+}

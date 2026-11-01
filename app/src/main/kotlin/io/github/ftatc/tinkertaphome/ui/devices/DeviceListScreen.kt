@@ -24,6 +24,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.ftatc.tinkertaphome.R
 import io.github.ftatc.tinkertaphome.domain.model.BleAddress
 import io.github.ftatc.tinkertaphome.domain.model.Device
+import io.github.ftatc.tinkertaphome.domain.model.DeviceError
 import io.github.ftatc.tinkertaphome.ui.theme.TinkerTapTheme
 
 /** Skärmen med sparade enheter. Kopplar ViewModel till den tillståndslösa [DeviceListContent]. */
@@ -45,6 +46,7 @@ fun DeviceListContent(uiState: DeviceListUiState, modifier: Modifier = Modifier)
             DeviceListUiState.Loading -> LoadingState(contentModifier)
             DeviceListUiState.Empty -> EmptyState(contentModifier)
             is DeviceListUiState.Content -> DeviceList(uiState.devices, contentModifier)
+            is DeviceListUiState.Error -> ErrorState(uiState.error, contentModifier)
         }
     }
 }
@@ -61,6 +63,16 @@ private fun LoadingState(modifier: Modifier) {
 private fun EmptyState(modifier: Modifier) {
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
         Text(stringResource(R.string.devices_empty))
+    }
+}
+
+@Composable
+private fun ErrorState(error: DeviceError, modifier: Modifier) {
+    val message = when (error) {
+        DeviceError.StorageUnavailable -> R.string.devices_error_storage
+    }
+    Box(modifier = modifier, contentAlignment = Alignment.Center) {
+        Text(stringResource(message))
     }
 }
 
