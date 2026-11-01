@@ -4,4 +4,10 @@
     <string name="devices_empty">Inga enheter än</string>
     <string name="devices_loading">Laddar enheter</string>
     <string name="devices_error_storage">Det gick inte att läsa in enheterna</string>
+    <string name="permission_ble_title">Appen behöver Bluetooth-åtkomst</string>
+    <string name="permission_ble_rationale">TinkerTap Home hittar och styr dina enheter via Bluetooth. Din plats används aldrig.</string>
+    <string name="permission_ble_rationale_denied">Utan Bluetooth-åtkomst kan appen inte hitta eller styra några enheter.</string>
+    <string name="permission_ble_grant">Tillåt Bluetooth</string>
+    <string name="permission_ble_permanently_denied">Bluetooth-åtkomst är avstängd för TinkerTap Home. Slå på ”Enheter i närheten” i appens inställningar.</string>
+    <string name="permission_ble_open_settings">Öppna inställningar</string>
 </resources>

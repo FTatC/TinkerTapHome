@@ -6,6 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import dagger.hilt.android.AndroidEntryPoint
 import io.github.ftatc.tinkertaphome.ui.devices.DeviceListScreen
+import io.github.ftatc.tinkertaphome.ui.permissions.BlePermissionGate
 import io.github.ftatc.tinkertaphome.ui.theme.TinkerTapTheme
 
 @AndroidEntryPoint
@@ -16,7 +17,9 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             TinkerTapTheme {
-                DeviceListScreen()
+                BlePermissionGate {
+                    DeviceListScreen()
+                }
             }
         }
     }

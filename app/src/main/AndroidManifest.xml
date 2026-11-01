@@ -1,6 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- Appen styr enheter över BLE och kan inte användas utan det. -->
+    <uses-feature
+        android:name="android.hardware.bluetooth_le"
+        android:required="true" />
+
+    <!--
+        SCAN: hitta enheter. neverForLocation intygar att skanningen aldrig används för att
+        bestämma plats, så appen behöver ingen platsbehörighet.
+        CONNECT: ansluta till enheter och läsa deras namn.
+    -->
+    <uses-permission
+        android:name="android.permission.BLUETOOTH_SCAN"
+        android:usesPermissionFlags="neverForLocation" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+
     <!--
         allowBackup="false": appen är lokal och offline med flit (se CLAUDE.md).
         Enheter och inställningar ska inte säkerhetskopieras till molnet.
