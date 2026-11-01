@@ -1,7 +1,6 @@
 package io.github.ftatc.tinkertaphome.data.di
 
 import android.content.Context
-import androidx.room.Room
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -18,8 +17,7 @@ internal object DatabaseModule {
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): TinkerTapDatabase =
-        Room.databaseBuilder(context, TinkerTapDatabase::class.java, TinkerTapDatabase.NAME)
-            .build()
+        TinkerTapDatabase.build(context)
 
     @Provides
     fun provideDeviceDao(database: TinkerTapDatabase): DeviceDao = database.deviceDao()
