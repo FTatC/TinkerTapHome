@@ -34,18 +34,25 @@ bygger egna enheter (ESP32, nRF52 och liknande) och vill ha ett enkelt gränssni
 ### Lager
 Koden delas i tre lager. Beroenden går bara inåt: `ui` → `domain` ← `data`.
 
-- **`ui/`**: Composables och ViewModels. Ingen direkt åtkomst till BLE, databas eller Android-system-API:er.
+- **`ui/`**: Composables och ViewModels. Ingen direkt åtkomst till BLE, databas eller Android-system-API:er. Enda undantaget är behörighetsflödet (se Regler).
 - **`domain/`**: Modeller, use cases och repository-interface. Ren Kotlin utan Android-importer.
 - **`data/`**: Repository-implementationer, BLE-klient, Room-DAO:er, DataStore.
 
 ### Regler
 - **All I/O sker i `data`-lagret.** BLE, databas, filer och nätverk anropas aldrig från `ui` eller `domain`.
 - **Inga globala variabler och inga muterbara singletons.** Tillstånd ägs av en ViewModel eller ett repository och injiceras via Hilt.
+  - **Förbjudet:** Kotlin-`object` eller `companion object` med muterbart tillstånd, top-level-`var` och statiska fält som nås utan DI.
+  - **Tillåtet:** Klasser med `@Singleton`-scope i Hilt som kapslar in sitt tillstånd privat och bara exponerar det via funktioner och `Flow`/`StateFlow`. BLE-klienten är ett sådant fall: den måste vara en enda instans eftersom den äger GATT-kön. Sådana klasser injiceras alltid via konstruktorn och går att ersätta med fakes i tester.
 - **Funktioner ska göra en sak.** Är en funktion längre än ungefär 30 rader, eller behöver ett "och" i namnet, så dela upp den.
 - **Ett UI-tillstånd per skärm.** Varje ViewModel exponerar en `StateFlow<XxxUiState>` och tar emot händelser via funktioner. Composables är tillståndslösa där det går.
 - **BLE-anrop körs i följd.** GATT-operationer (read/write/enable notification) köas i BLE-klienten; Android klarar inte parallella GATT-anrop.
-- **Fel är data.** Använd `Result` eller sealed classes för förväntade fel, till exempel "enhet utom räckhåll" eller "behörighet saknas". Kasta inte undantag genom lagren.
+- **Fel är data.** Förväntade fel, till exempel "enhet utom räckhåll" eller "behörighet saknas", modelleras som sealed classes/interfaces i `domain`. Kasta inte undantag genom lagren.
+  - **Standard:** En egen resultattyp med typat fel, till exempel `sealed interface ConnectResult { data class Success(...); sealed interface Failure }` eller en generisk `Outcome<T, E>`. Då måste anroparen hantera varje feltyp och `when` blir uttömmande.
+  - **Kotlins `Result<T>` används inte i `domain`-API:er**, eftersom felet bara är en otypad `Throwable`. Den får användas lokalt inom `data` (till exempel med `runCatching` runt ett plattforms-API) men ska översättas till ett domänfel innan värdet lämnar lagret.
+  - Oväntade fel (programmeringsfel, brutna invarianter) får kasta som vanligt. `CancellationException` ska aldrig fångas och sväljas.
 - **Behörigheter hanteras på ett ställe.** Runtime-behörigheter för BLE (`BLUETOOTH_SCAN` med `neverForLocation`, `BLUETOOTH_CONNECT`) hanteras i ett dedikerat UI-flöde, inte utspritt i skärmarna.
+  - **Kontrollen** av om en behörighet är beviljad ligger bakom ett interface (till exempel `PermissionChecker`) som implementeras i `data`. ViewModels läser behörighetsstatus via interfacet och kan därmed testas med en fake.
+  - **Själva förfrågan** (`rememberLauncherForActivityResult` med `RequestMultiplePermissions`) kräver en `Activity` och är därför det enda tillåtna undantaget från regeln att `ui` inte använder Android-system-API:er. Den lever bara i behörighetsflödets Composable och rapporterar resultatet som en händelse till sin ViewModel.
 - **Inga hårdkodade strängar i UI.** Använd `strings.xml`.
 
 ### Tester
@@ -58,7 +65,16 @@ Koden delas i tre lager. Beroenden går bara inåt: `ui` → `domain` ← `data`
   - Bryt ut ren logik ur Composables, callbacks och livscykelmetoder till rena funktioner eller use cases.
   - Injicera `CoroutineDispatcher` och tidskälla så att tester kan styra dem.
 - **BLE mockas via interfacet**, aldrig via den riktiga stacken.
-- **En ändring är inte klar förrän `./gradlew test` passerar.** Rapportera tydligt om något test inte kunde köras eller fallerar.
+- **Databasmigreringar testas.** Varje Room-migration får ett test med `MigrationTestHelper` som migrerar från föregående schemaversion och verifierar datan (se Databas nedan).
+- **En ändring är inte klar förrän rätt testsvit passerar.** Rapportera tydligt om något test inte kunde köras eller fallerar.
+  - **Alltid:** `./gradlew test` (JVM-enhetstester: ViewModels, use cases, repositories med fakes).
+  - **Dessutom `./gradlew connectedAndroidTest`** när ändringen rör Composables, navigation, Room-DAO:er eller migreringar, eller annan kod vars tester ligger i `androidTest`. Compose UI-tester och `MigrationTestHelper` är instrumenterade och körs **inte** av `./gradlew test`.
+  - Finns ingen enhet eller emulator tillgänglig: säg uttryckligen att de instrumenterade testerna inte har körts. Påstå inte att ändringen är verifierad.
+
+### Databas (Room)
+- **Schemat exporteras från första versionen.** `@Database(exportSchema = true)` och KSP-argumentet `room.schemaLocation` pekar på `schemas/` i modulen. Katalogen `schemas/` checkas in. Den räknas inte som en genererad fil som ska ignoreras.
+- **Varje schemaändring höjer `version` och får en migration** i samma ändring: en `AutoMigration` när Room klarar det, annars en manuell `Migration`. Den exporterade JSON-filen för den nya versionen checkas in tillsammans med migrationen.
+- **Ändra aldrig en redan incheckad schema-JSON** eller en migration som har funnits i en release. Rätta i stället med en ny version och en ny migration.
 
 ## Git-arbetsflöde
 
@@ -89,7 +105,7 @@ Koden delas i tre lager. Beroenden går bara inåt: `ui` → `domain` ← `data`
 ```bash
 ./gradlew assembleDebug          # Bygg debug-APK
 ./gradlew test                   # Enhetstester
-./gradlew connectedAndroidTest   # Instrumenterade tester (kräver enhet/emulator)
+./gradlew connectedAndroidTest   # Instrumenterade tester: Compose UI, Room, migreringar (kräver enhet/emulator)
 ./gradlew lint                   # Lint
 ```
 
