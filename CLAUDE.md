@@ -75,7 +75,9 @@ Koden delas i tre lager, och varje lager är en egen Gradle-modul. Beroenden gå
 
 ### Databas (Room)
 - **Schemat exporteras från första versionen.** `@Database(exportSchema = true)` och Room-pluginens `room { schemaDirectory("$projectDir/schemas") }` i `data/build.gradle.kts`. Katalogen `data/schemas/` checkas in. Den räknas inte som en genererad fil som ska ignoreras.
-- **Varje schemaändring höjer `version` och får en migration** i samma ändring: en `AutoMigration` när Room klarar det, annars en manuell `Migration`. Den exporterade JSON-filen för den nya versionen checkas in tillsammans med migrationen.
+- **Varje schemaändring höjer `TinkerTapDatabase.VERSION` och får en migration** i samma ändring: en `AutoMigration` när Room klarar det, annars en manuell `Migration` som läggs till i `ALL_MIGRATIONS` (`data/.../local/Migrations.kt`). Den exporterade JSON-filen för den nya versionen checkas in tillsammans med migrationen.
+- **Databasen byggs bara via `TinkerTapDatabase.build()`.** Både Hilt och `MigrationTest` använder den, så testet provar exakt den konfiguration som appen kör med.
+- **`MigrationTest` (instrumenterat) ska passera efter varje schemaändring.** Det skapar en databas med den första schemaversionen och kontrollerar att den kan uppgraderas till nuvarande version, att schemat stämmer och att data finns kvar. Bygg modulen en gång efter att versionen höjts, så att den nya schema-JSON:en exporteras innan testerna körs.
 - **Ändra aldrig en redan incheckad schema-JSON** eller en migration som har funnits i en release. Rätta i stället med en ny version och en ny migration.
 
 ## Git-arbetsflöde
