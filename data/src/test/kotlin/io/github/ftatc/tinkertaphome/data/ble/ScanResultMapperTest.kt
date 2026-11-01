@@ -1,5 +1,6 @@
 package io.github.ftatc.tinkertaphome.data.ble
 
+import io.github.ftatc.tinkertaphome.domain.model.DeviceNames
 import io.github.ftatc.tinkertaphome.domain.model.ScannedDevice
 import io.github.ftatc.tinkertaphome.domain.model.testAddress
 import org.junit.Assert.assertEquals
@@ -28,5 +29,28 @@ class ScanResultMapperTest {
     @Test
     fun `trims whitespace around the name`() {
         assertEquals("Lampa", RawScanEvent.Result(address = testAddress(1).value, name = " Lampa ", rssi = -55).toScannedDevice()?.name)
+    }
+
+    @Test
+    fun `removes hidden characters from an advertised name`() {
+        // Regressionstest: namnet kommer från vem som helst i närheten och visades och föreslogs
+        // som det var, inklusive tecken som vänder textriktningen.
+        val event = RawScanEvent.Result(address = testAddress(1).value, name = "La\u202Empa\u0000", rssi = -55)
+
+        assertEquals("Lampa", event.toScannedDevice()?.name)
+    }
+
+    @Test
+    fun `shortens a long advertised name to the maximum length`() {
+        val event = RawScanEvent.Result(address = testAddress(1).value, name = "a".repeat(500), rssi = -55)
+
+        assertEquals("a".repeat(DeviceNames.MAX_LENGTH), event.toScannedDevice()?.name)
+    }
+
+    @Test
+    fun `a name of only hidden characters is treated as no name`() {
+        val event = RawScanEvent.Result(address = testAddress(1).value, name = "\u200B\u202E", rssi = -55)
+
+        assertNull(event.toScannedDevice()?.name)
     }
 }

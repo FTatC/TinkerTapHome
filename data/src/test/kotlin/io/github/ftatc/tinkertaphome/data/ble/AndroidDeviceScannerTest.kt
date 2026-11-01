@@ -20,6 +20,8 @@ import org.junit.Test
 
 class AndroidDeviceScannerTest {
 
+    private val MAX = AndroidDeviceScanner.MAX_FOUND_DEVICES
+
     private val source = FakeBleScanSource()
     private val permissions = FakeBlePermissionChecker(granted = true)
     private val scanner = AndroidDeviceScanner(source, permissions)
@@ -183,6 +185,74 @@ class AndroidDeviceScannerTest {
             assertEquals(Outcome.Success(emptyList<ScannedDevice>()), awaitItem())
             cancelAndIgnoreRemainingEvents()
         }
+    }
+
+    @Test
+    fun `keeps at most the maximum number of devices`() = runTest {
+        // Regressionstest: en enhet som skickar reklampaket med slumpade adresser kunde få listan
+        // att växa utan gräns under hela skanningen.
+        scanner.scan().test {
+            awaitItem()
+
+            repeat(MAX + 50) { source.send(numbered(it, rssi = -60)) }
+
+            assertEquals(MAX, expectMostRecentItem().devicesOrFail().size)
+        }
+    }
+
+    @Test
+    fun `when full a stronger new device replaces the weakest`() = runTest {
+        scanner.scan().test {
+            awaitItem()
+            repeat(MAX - 1) { source.send(numbered(it, rssi = -60)) }
+            source.send(numbered(MAX - 1, rssi = -90))
+
+            source.send(numbered(MAX, rssi = -40))
+
+            val addresses = expectMostRecentItem().devicesOrFail().map { it.address.value }
+            assertEquals(MAX, addresses.size)
+            assertTrue(numbered(MAX, rssi = 0).address in addresses)
+            assertFalse(numbered(MAX - 1, rssi = 0).address in addresses)
+        }
+    }
+
+    @Test
+    fun `when full a weaker new device is ignored`() = runTest {
+        scanner.scan().test {
+            awaitItem()
+            repeat(MAX) { source.send(numbered(it, rssi = -60)) }
+            val full = expectMostRecentItem().devicesOrFail()
+
+            source.send(numbered(MAX, rssi = -90))
+
+            expectNoEvents()
+            assertEquals(MAX, full.size)
+        }
+    }
+
+    @Test
+    fun `when full a known device is still updated`() = runTest {
+        scanner.scan().test {
+            awaitItem()
+            repeat(MAX) { source.send(numbered(it, rssi = -60)) }
+            expectMostRecentItem()
+
+            source.send(numbered(0, rssi = -30))
+
+            assertEquals(-30, awaitItem().devicesOrFail().first { it.address.value == numbered(0, 0).address }.rssi)
+        }
+    }
+
+    /** En giltig och unik adress för varje index, även över 255. */
+    private fun numbered(index: Int, rssi: Int) = RawScanEvent.Result(
+        address = "AA:BB:CC:DD:%02X:%02X".format(index / 256, index % 256),
+        name = null,
+        rssi = rssi,
+    )
+
+    private fun Outcome<List<ScannedDevice>, BleError>.devicesOrFail(): List<ScannedDevice> {
+        check(this is Outcome.Success) { "Förväntade Success men fick $this" }
+        return value
     }
 
     private fun result(id: Long, name: String?, rssi: Int) =

@@ -23,6 +23,10 @@
     <string name="save_device_confirm">Save</string>
     <string name="save_device_cancel">Cancel</string>
     <string name="save_device_error_name_missing">Enter a name</string>
+    <plurals name="save_device_error_name_too_long">
+        <item quantity="one">The name can be at most %1$d character</item>
+        <item quantity="other">The name can be at most %1$d characters</item>
+    </plurals>
     <string name="save_device_error_already_saved">This device is already saved</string>
     <string name="save_device_error_storage">Couldn\'t save the device</string>
     <string name="permission_ble_title">Bluetooth access needed</string>
