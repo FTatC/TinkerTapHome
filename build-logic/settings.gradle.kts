@@ -1,3 +1,15 @@
+pluginManagement {
+    repositories {
+        mavenCentral()
+        // Pluginportalen får bara leverera kotlin-dsl. Allt annat hämtas från Maven Central.
+        gradlePluginPortal {
+            content {
+                includeGroupByRegex("org\\.gradle\\.kotlin.*")
+            }
+        }
+    }
+}
+
 dependencyResolutionManagement {
     repositories {
         google()

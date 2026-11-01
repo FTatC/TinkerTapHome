@@ -9,7 +9,13 @@ pluginManagement {
             }
         }
         mavenCentral()
-        gradlePluginPortal()
+        // Pluginportalen får bara leverera det som inte finns hos Google eller Maven Central.
+        // Annars kan ett paket med samma namn som ett riktigt beroende hämtas därifrån.
+        gradlePluginPortal {
+            content {
+                includeGroupByRegex("org\\.gradle\\.toolchains.*")
+            }
+        }
     }
 }
 plugins {
