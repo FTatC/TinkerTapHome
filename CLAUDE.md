@@ -38,7 +38,7 @@ Koden delas i tre lager, och varje lager är en egen Gradle-modul. Beroenden gå
 
 - **`:app`** (paket `…tinkertaphome.ui`): Composables, ViewModels, `Application` och `MainActivity`. Ingen direkt åtkomst till BLE, databas eller Android-system-API:er. Enda undantaget är behörighetsflödet (se Regler). Beror på `:domain`, och på `:data` enbart för att Hilt ska hitta dess moduler. Klasser i `:data` används aldrig direkt från `:app`.
 - **`:domain`** (Kotlin/JVM-modul, paket `…tinkertaphome.domain`): Modeller, use cases och repository-interface. Ren Kotlin utan Android-importer. Enda tillåtna beroenden är `kotlinx-coroutines-core` och `javax.inject` (för `@Inject` på use cases). Fakes som delas mellan modulernas tester ligger i `src/testFixtures`.
-- **`:data`** (Android-biblioteksmodul, paket `…tinkertaphome.data`): Repository-implementationer, BLE-klient, Room-DAO:er, DataStore och Hilt-moduler som binder implementationerna till interfacen i `:domain`. Hilt-moduler här är `internal`.
+- **`:data`** (Android-biblioteksmodul, paket `…tinkertaphome.data`): Repository-implementationer, BLE-klient, Room-DAO:er, DataStore och Hilt-moduler som binder implementationerna till interfacen i `:domain`. **Allt i `:data` är `internal`**: klasser, interface, DAO:er, entiteter och toppnivåfunktioner. `:app` kommer bara åt datalagret via interfacen i `:domain`, och Hilt sköter kopplingen. Nya deklarationer i `:data` ska också vara `internal`, annars kan UI-lagret gå förbi `domain`.
 
 ### Regler
 - **All I/O sker i `data`-lagret.** BLE, databas, filer och nätverk anropas aldrig från `ui` eller `domain`.

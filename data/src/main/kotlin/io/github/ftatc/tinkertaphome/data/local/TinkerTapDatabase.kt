@@ -14,7 +14,7 @@ import androidx.room.RoomDatabase
     version = 1,
     exportSchema = true,
 )
-abstract class TinkerTapDatabase : RoomDatabase() {
+internal abstract class TinkerTapDatabase : RoomDatabase() {
 
     abstract fun deviceDao(): DeviceDao
 
