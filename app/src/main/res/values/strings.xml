@@ -5,4 +5,10 @@
     <string name="devices_empty">No devices yet</string>
     <string name="devices_loading">Loading devices</string>
     <string name="devices_error_storage">Couldn\'t load your devices</string>
+    <string name="permission_ble_title">Bluetooth access needed</string>
+    <string name="permission_ble_rationale">TinkerTap Home finds and controls your devices over Bluetooth. Your location is never used.</string>
+    <string name="permission_ble_rationale_denied">Without Bluetooth access the app can\'t find or control any devices.</string>
+    <string name="permission_ble_grant">Allow Bluetooth</string>
+    <string name="permission_ble_permanently_denied">Bluetooth access is turned off for TinkerTap Home. Turn on \"Nearby devices\" in the app settings.</string>
+    <string name="permission_ble_open_settings">Open settings</string>
 </resources>

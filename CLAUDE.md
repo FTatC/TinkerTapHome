@@ -63,8 +63,8 @@ Nya moduler använder ett av pluginsen. Kopiera inte `compileSdk`, `minSdk`, `co
   - **Kotlins `Result<T>` används inte i `domain`-API:er**, eftersom felet bara är en otypad `Throwable`. Den får användas lokalt inom `data` (till exempel med `runCatching` runt ett plattforms-API) men ska översättas till ett domänfel innan värdet lämnar lagret.
   - Oväntade fel (programmeringsfel, brutna invarianter) får kasta som vanligt. `CancellationException` ska aldrig fångas och sväljas.
 - **Behörigheter hanteras på ett ställe.** Runtime-behörigheter för BLE (`BLUETOOTH_SCAN` med `neverForLocation`, `BLUETOOTH_CONNECT`) hanteras i ett dedikerat UI-flöde, inte utspritt i skärmarna.
-  - **Kontrollen** av om en behörighet är beviljad ligger bakom ett interface (till exempel `PermissionChecker`) som implementeras i `data`. ViewModels läser behörighetsstatus via interfacet och kan därmed testas med en fake.
-  - **Själva förfrågan** (`rememberLauncherForActivityResult` med `RequestMultiplePermissions`) kräver en `Activity` och är därför det enda tillåtna undantaget från regeln att `ui` inte använder Android-system-API:er. Den lever bara i behörighetsflödets Composable och rapporterar resultatet som en händelse till sin ViewModel.
+  - **Kontrollen** av om en behörighet är beviljad ligger bakom `BlePermissionChecker` i `:domain`, som implementeras av `AndroidBlePermissionChecker` i `:data`. ViewModels läser behörighetsstatus via interfacet och kan därmed testas med en fake.
+  - **Själva förfrågan** (`rememberLauncherForActivityResult` med `RequestMultiplePermissions`) kräver en `Activity` och är därför det enda tillåtna undantaget från regeln att `ui` inte använder Android-system-API:er. Den lever bara i `BlePermissionGate` (`ui/permissions/`) och rapporterar resultatet som en händelse till `BlePermissionViewModel`. Skärmar som kräver BLE läggs innanför `BlePermissionGate` och ber aldrig om behörigheter själva.
 - **Inga hårdkodade strängar i UI.** Använd `strings.xml`.
 
 ### Språk
