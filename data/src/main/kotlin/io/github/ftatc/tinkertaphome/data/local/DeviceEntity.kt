@@ -10,10 +10,10 @@ import io.github.ftatc.tinkertaphome.domain.model.Device
     tableName = "devices",
     indices = [Index(value = ["address"], unique = true)],
 )
-data class DeviceEntity(
+internal data class DeviceEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     @ColumnInfo(name = "address") val address: String,
     @ColumnInfo(name = "name") val name: String,
 )
 
-fun DeviceEntity.toDomain(): Device = Device(id = id, address = address, name = name)
+internal fun DeviceEntity.toDomain(): Device = Device(id = id, address = address, name = name)

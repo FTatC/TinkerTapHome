@@ -6,7 +6,7 @@ import androidx.room.Query
 import kotlinx.coroutines.flow.Flow
 
 @Dao
-interface DeviceDao {
+internal interface DeviceDao {
 
     @Query("SELECT * FROM devices")
     fun observeAll(): Flow<List<DeviceEntity>>

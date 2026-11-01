@@ -8,7 +8,7 @@ import javax.inject.Inject
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
-class RoomDeviceRepository @Inject constructor(
+internal class RoomDeviceRepository @Inject constructor(
     private val dao: DeviceDao,
 ) : DeviceRepository {
 
