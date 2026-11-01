@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Fönstertema innan Compose ritar. Själva UI-temat finns i ui/theme/Theme.kt. -->
+    <style name="Theme.TinkerTapHome" parent="android:Theme.Material.NoActionBar" />
+</resources>
