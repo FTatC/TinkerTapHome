@@ -1,4 +1,4 @@
-package io.github.ftatc.tinkertaphome.domain.repository
+package io.github.ftatc.tinkertaphome.domain.ble
 
 import io.github.ftatc.tinkertaphome.domain.Outcome
 import io.github.ftatc.tinkertaphome.domain.model.BleError

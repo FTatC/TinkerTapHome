@@ -4,7 +4,7 @@ import io.github.ftatc.tinkertaphome.domain.Outcome
 import io.github.ftatc.tinkertaphome.domain.model.BleError
 import io.github.ftatc.tinkertaphome.domain.model.testScannedDevice
 import io.github.ftatc.tinkertaphome.domain.repository.FakeDeviceRepository
-import io.github.ftatc.tinkertaphome.domain.repository.FakeDeviceScanner
+import io.github.ftatc.tinkertaphome.domain.ble.FakeDeviceScanner
 import io.github.ftatc.tinkertaphome.domain.usecase.ScanForDevicesUseCase
 import io.github.ftatc.tinkertaphome.ui.MainDispatcherRule
 import kotlin.time.Duration.Companion.seconds
@@ -50,7 +50,7 @@ class ScanViewModelTest {
 
         viewModel.startScan()
 
-        assertEquals(ScanUiState(isScanning = false, error = BleError.BluetoothOff), viewModel.uiState.value)
+        assertEquals(ScanUiState(isScanning = false, scanError = BleError.BluetoothOff), viewModel.uiState.value)
     }
 
     @Test
@@ -84,7 +84,7 @@ class ScanViewModelTest {
         viewModel.startScan()
 
         val state = viewModel.uiState.value
-        assertNull(state.error)
+        assertNull(state.scanError)
         assertTrue(state.isScanning)
         assertEquals(emptyList<Any>(), state.devices)
         viewModel.stopScan()

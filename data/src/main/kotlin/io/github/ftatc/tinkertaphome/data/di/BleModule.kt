@@ -7,7 +7,7 @@ import dagger.hilt.components.SingletonComponent
 import io.github.ftatc.tinkertaphome.data.ble.AndroidBleScanSource
 import io.github.ftatc.tinkertaphome.data.ble.AndroidDeviceScanner
 import io.github.ftatc.tinkertaphome.data.ble.BleScanSource
-import io.github.ftatc.tinkertaphome.domain.repository.DeviceScanner
+import io.github.ftatc.tinkertaphome.domain.ble.DeviceScanner
 
 @Module
 @InstallIn(SingletonComponent::class)

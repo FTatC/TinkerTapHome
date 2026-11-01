@@ -1,5 +1,8 @@
 package io.github.ftatc.tinkertaphome.domain
 
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.transformWhile
+
 /**
  * Resultatet av en operation som kan misslyckas på ett förväntat sätt.
  *
@@ -18,3 +21,13 @@ inline fun <T, E, R> Outcome<T, E>.map(transform: (T) -> R): Outcome<R, E> = whe
     is Outcome.Success -> Outcome.Success(transform(value))
     is Outcome.Failure -> this
 }
+
+/**
+ * Skickar vidare varje resultat och avslutar flödet direkt efter det första [Outcome.Failure].
+ * Felet skickas alltså med, men inget efter det.
+ */
+fun <T, E> Flow<Outcome<T, E>>.takeUntilFailure(): Flow<Outcome<T, E>> =
+    transformWhile { outcome ->
+        emit(outcome)
+        outcome is Outcome.Success
+    }

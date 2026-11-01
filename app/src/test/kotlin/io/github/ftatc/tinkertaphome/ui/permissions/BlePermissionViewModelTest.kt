@@ -1,6 +1,6 @@
 package io.github.ftatc.tinkertaphome.ui.permissions
 
-import io.github.ftatc.tinkertaphome.domain.repository.FakeBlePermissionChecker
+import io.github.ftatc.tinkertaphome.domain.ble.FakeBlePermissionChecker
 import org.junit.Assert.assertEquals
 import org.junit.Test
 

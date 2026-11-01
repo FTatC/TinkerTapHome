@@ -22,10 +22,8 @@ internal class RoomDeviceRepository @Inject constructor(
 
     override fun observeDevices(): Flow<Outcome<List<Device>, DeviceError>> =
         dao.observeAll()
-            .map<_, Outcome<List<Device>, DeviceError>> { entities ->
-                Outcome.Success(entities.mapNotNull { it.toDomain() })
-            }
-            .catch { cause -> emit(cause.toStorageFailure()) }
+            .map { entities -> entities.toDevicesOutcome() }
+            .catch { cause -> emit(cause.toStorageFailureOrRethrow()) }
 
     override suspend fun save(address: BleAddress, name: String): Outcome<Device, SaveDeviceError> =
         try {
@@ -42,11 +40,18 @@ internal class RoomDeviceRepository @Inject constructor(
 }
 
 /**
+ * Returtypen är det bredare `Outcome`, inte `Outcome.Success`, så att `catch` i samma flöde kan
+ * skicka ett `Outcome.Failure`.
+ */
+private fun List<DeviceEntity>.toDevicesOutcome(): Outcome<List<Device>, DeviceError> =
+    Outcome.Success(mapNotNull { it.toDomain() })
+
+/**
  * Översätter fel från Room till ett domänfel, så att UI:t kan visa ett feltillstånd i stället för
  * att appen kraschar. Alla [Exception] räknas som lagringsfel eftersom Room kastar flera olika typer,
- * till exempel `SQLiteException` och `IllegalStateException`. Avbrott och [Error] släpps igenom.
+ * till exempel `SQLiteException` och `IllegalStateException`. Avbrott och [Error] kastas vidare.
  */
-private fun Throwable.toStorageFailure(): Outcome.Failure<DeviceError> = when (this) {
+private fun Throwable.toStorageFailureOrRethrow(): Outcome.Failure<DeviceError> = when (this) {
     is CancellationException -> throw this
     is Exception -> Outcome.Failure(DeviceError.StorageUnavailable)
     else -> throw this

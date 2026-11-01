@@ -1,16 +1,17 @@
 package io.github.ftatc.tinkertaphome.data.ble
 
 import io.github.ftatc.tinkertaphome.domain.Outcome
+import io.github.ftatc.tinkertaphome.domain.ble.BlePermissionChecker
+import io.github.ftatc.tinkertaphome.domain.ble.DeviceScanner
 import io.github.ftatc.tinkertaphome.domain.model.BleAddress
 import io.github.ftatc.tinkertaphome.domain.model.BleError
 import io.github.ftatc.tinkertaphome.domain.model.ScannedDevice
-import io.github.ftatc.tinkertaphome.domain.repository.BlePermissionChecker
-import io.github.ftatc.tinkertaphome.domain.repository.DeviceScanner
+import io.github.ftatc.tinkertaphome.domain.takeUntilFailure
 import javax.inject.Inject
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.transformWhile
+import kotlinx.coroutines.flow.mapNotNull
 
 private typealias ScanOutcome = Outcome<List<ScannedDevice>, BleError>
 
@@ -25,37 +26,25 @@ internal class AndroidDeviceScanner @Inject constructor(
             !source.isBluetoothEnabled() -> emit(Outcome.Failure(BleError.BluetoothOff))
             else -> {
                 emit(Outcome.Success(emptyList()))
-                emitAll(foundDevices())
+                emitAll(scanResults())
             }
         }
     }
 
-    /** Samlar unika enheter per adress och skickar hela listan efter varje ändring. Avslutas vid fel. */
-    private fun foundDevices(): Flow<ScanOutcome> {
+    /**
+     * Hela listan med unika enheter efter varje ändring, eller ett fel som avslutar skanningen.
+     * Händelser som inte ändrar listan, till exempel en ogiltig adress, ger inget nytt resultat.
+     */
+    private fun scanResults(): Flow<ScanOutcome> {
         val found = LinkedHashMap<BleAddress, ScannedDevice>()
-        return source.scanEvents().transformWhile { event ->
-            when (event) {
-                is RawScanEvent.Result -> {
-                    val device = event.toScannedDevice()
-                    if (device != null && found.addOrUpdate(device)) {
-                        emit(Outcome.Success(found.values.toList()))
-                    }
-                    true
-                }
-                RawScanEvent.Unavailable -> {
-                    emit(Outcome.Failure(BleError.BluetoothOff))
-                    false
-                }
-                RawScanEvent.PermissionDenied -> {
-                    emit(Outcome.Failure(BleError.PermissionMissing))
-                    false
-                }
-                is RawScanEvent.Failed -> {
-                    emit(Outcome.Failure(BleError.ScanFailed(event.errorCode)))
-                    false
+        return source.scanEvents()
+            .mapNotNull { event ->
+                when (event) {
+                    is RawScanEvent.Result -> found.withResult(event)?.let { Outcome.Success(it) }
+                    is RawScanEvent.Stopped -> Outcome.Failure(event.toBleError())
                 }
             }
-        }
+            .takeUntilFailure()
     }
 
     companion object {
@@ -64,13 +53,20 @@ internal class AndroidDeviceScanner @Inject constructor(
     }
 }
 
+/** Lägger till resultatet och returnerar den nya listan, eller `null` om listan inte ändrades. */
+private fun MutableMap<BleAddress, ScannedDevice>.withResult(event: RawScanEvent.Result): List<ScannedDevice>? {
+    val device = event.toScannedDevice() ?: return null
+    return if (addOrUpdateWithinLimit(device)) values.toList() else null
+}
+
 /**
- * Lägger till eller uppdaterar [device] och returnerar `true` om listan ändrades.
+ * Lägger till eller uppdaterar [device] utan att listan blir längre än [AndroidDeviceScanner.MAX_FOUND_DEVICES].
+ * Returnerar `true` om listan ändrades.
  *
  * En känd enhet uppdateras alltid. Är listan full ersätter en ny enhet den med svagast signal, men
- * bara om den nya har starkare signal. Annars ignoreras den.
+ * bara om den nya har starkare signal. Annars avvisas den.
  */
-private fun MutableMap<BleAddress, ScannedDevice>.addOrUpdate(device: ScannedDevice): Boolean {
+private fun MutableMap<BleAddress, ScannedDevice>.addOrUpdateWithinLimit(device: ScannedDevice): Boolean {
     val known = this[device.address]
     if (known == null && size >= AndroidDeviceScanner.MAX_FOUND_DEVICES) {
         val weakest = values.minBy { it.rssi }
@@ -84,3 +80,9 @@ private fun MutableMap<BleAddress, ScannedDevice>.addOrUpdate(device: ScannedDev
 /** Annonserar enheten inget namn i ett paket behålls namnet från ett tidigare paket. */
 private fun ScannedDevice.keepingNameFrom(previous: ScannedDevice?): ScannedDevice =
     if (name == null && previous?.name != null) copy(name = previous.name) else this
+
+private fun RawScanEvent.Stopped.toBleError(): BleError = when (this) {
+    RawScanEvent.BluetoothOff -> BleError.BluetoothOff
+    RawScanEvent.PermissionDenied -> BleError.PermissionMissing
+    is RawScanEvent.Failed -> BleError.ScanFailed(errorCode)
+}

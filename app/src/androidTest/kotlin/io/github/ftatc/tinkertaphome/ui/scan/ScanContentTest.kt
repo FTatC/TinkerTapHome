@@ -80,7 +80,7 @@ class ScanContentTest {
 
     @Test
     fun bluetoothOffShowsMessageAndRetry() {
-        show(ScanUiState(error = BleError.BluetoothOff))
+        show(ScanUiState(scanError = BleError.BluetoothOff))
 
         composeRule.onNodeWithText(string(R.string.scan_error_bluetooth_off)).assertIsDisplayed()
         composeRule.onNodeWithText(string(R.string.scan_retry)).performClick()
@@ -90,7 +90,7 @@ class ScanContentTest {
 
     @Test
     fun scanFailureShowsTheErrorCode() {
-        show(ScanUiState(error = BleError.ScanFailed(code = 2)))
+        show(ScanUiState(scanError = BleError.ScanFailed(code = 2)))
 
         composeRule.onNodeWithText(string(R.string.scan_error_failed, 2)).assertIsDisplayed()
     }

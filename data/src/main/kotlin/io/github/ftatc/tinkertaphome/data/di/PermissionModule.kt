@@ -7,7 +7,7 @@ import dagger.hilt.components.SingletonComponent
 import io.github.ftatc.tinkertaphome.data.permission.AndroidBlePermissionChecker
 import io.github.ftatc.tinkertaphome.data.permission.ContextPermissionStatus
 import io.github.ftatc.tinkertaphome.data.permission.PermissionStatus
-import io.github.ftatc.tinkertaphome.domain.repository.BlePermissionChecker
+import io.github.ftatc.tinkertaphome.domain.ble.BlePermissionChecker
 
 @Module
 @InstallIn(SingletonComponent::class)

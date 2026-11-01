@@ -2,7 +2,7 @@ package io.github.ftatc.tinkertaphome.ui.permissions
 
 import androidx.lifecycle.ViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
-import io.github.ftatc.tinkertaphome.domain.repository.BlePermissionChecker
+import io.github.ftatc.tinkertaphome.domain.ble.BlePermissionChecker
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
