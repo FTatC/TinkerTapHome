@@ -19,7 +19,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -40,11 +39,14 @@ import io.github.ftatc.tinkertaphome.ui.theme.TinkerTapTheme
 
 /**
  * Skärmen som söker efter nya enheter. Skanningen startar när skärmen syns och stoppas när den
- * inte längre syns, så att den inte drar batteri i bakgrunden.
+ * inte längre syns, så att den inte drar batteri i bakgrunden. Dialogen för att spara en enhet
+ * visas ovanpå skärmen, så skanningen fortsätter medan den är öppen.
+ *
+ * @param onDeviceClick anropas när användaren väljer en hittad enhet.
  */
 @Composable
 fun ScanScreen(
-    onDeviceSaved: () -> Unit,
+    onDeviceClick: (ScannedDevice) -> Unit,
     viewModel: ScanViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -54,18 +56,7 @@ fun ScanScreen(
         onStopOrDispose { viewModel.stopScan() }
     }
 
-    LaunchedEffect(uiState.savedDevice) {
-        if (uiState.savedDevice != null) onDeviceSaved()
-    }
-
-    ScanContent(
-        uiState = uiState,
-        onScanAgain = viewModel::startScan,
-        onDeviceClick = viewModel::onDeviceClick,
-        onNameChange = viewModel::onNameChange,
-        onSaveConfirm = viewModel::onSaveConfirm,
-        onSaveDismiss = viewModel::onSaveDismiss,
-    )
+    ScanContent(uiState = uiState, onScanAgain = viewModel::startScan, onDeviceClick = onDeviceClick)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -74,9 +65,6 @@ fun ScanContent(
     uiState: ScanUiState,
     onScanAgain: () -> Unit,
     onDeviceClick: (ScannedDevice) -> Unit,
-    onNameChange: (String) -> Unit,
-    onSaveConfirm: () -> Unit,
-    onSaveDismiss: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Scaffold(
@@ -91,9 +79,6 @@ fun ScanContent(
                 uiState.error == null -> CenteredText(stringResource(R.string.scan_none_found))
             }
         }
-    }
-    uiState.saveDialog?.let { dialog ->
-        SaveDeviceDialog(dialog, onNameChange, onSaveConfirm, onSaveDismiss)
     }
 }
 
@@ -165,9 +150,6 @@ private fun ScanContentPreview() {
             ),
             onScanAgain = {},
             onDeviceClick = {},
-            onNameChange = {},
-            onSaveConfirm = {},
-            onSaveDismiss = {},
         )
     }
 }
