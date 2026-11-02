@@ -113,4 +113,23 @@ class BlePermissionViewModelTest {
 
         assertEquals(BlePermissionUiState.Granted, viewModel.uiState.value)
     }
+
+    @Test
+    fun `a permission dialog that cannot be opened points to the app settings`() {
+        val viewModel = BlePermissionViewModel(checker)
+
+        viewModel.onPermissionDialogUnavailable()
+
+        assertEquals(BlePermissionUiState.PermanentlyDenied(), viewModel.uiState.value)
+    }
+
+    @Test
+    fun `when neither the dialog nor the settings can be opened manual instructions are shown`() {
+        val viewModel = BlePermissionViewModel(checker)
+        viewModel.onPermissionDialogUnavailable()
+
+        viewModel.onSettingsUnavailable()
+
+        assertEquals(BlePermissionUiState.PermanentlyDenied(settingsUnavailable = true), viewModel.uiState.value)
+    }
 }

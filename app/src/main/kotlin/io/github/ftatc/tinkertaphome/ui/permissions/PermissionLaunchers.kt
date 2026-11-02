@@ -11,10 +11,14 @@ import androidx.compose.runtime.Composable
 
 /**
  * Returnerar en funktion som visar systemets behörighetsdialog för de givna behörigheterna.
- * Svaret tolkas med [interpretPermissionResult] och skickas till [onResult].
+ * Svaret tolkas med [interpretPermissionResult] och skickas till [onResult]. Går dialogen inte att
+ * öppna, vilket kan hända på kraftigt anpassade Android-versioner, anropas [onUnavailable].
  */
 @Composable
-internal fun rememberPermissionRequest(onResult: (PermissionRequestResult) -> Unit): (List<String>) -> Unit {
+internal fun rememberPermissionRequest(
+    onResult: (PermissionRequestResult) -> Unit,
+    onUnavailable: () -> Unit,
+): (List<String>) -> Unit {
     val activity = LocalActivity.current
     val launcher = rememberLauncherForActivityResult(RequestMultiplePermissions()) { results ->
         val result = interpretPermissionResult(results) { permission ->
@@ -22,7 +26,7 @@ internal fun rememberPermissionRequest(onResult: (PermissionRequestResult) -> Un
         }
         onResult(result)
     }
-    return { permissions -> launcher.launch(permissions.toTypedArray()) }
+    return { permissions -> if (!launcher.tryLaunch(permissions.toTypedArray())) onUnavailable() }
 }
 
 /** Returnerar en funktion som öppnar appens inställningar, eller anropar [onUnavailable] om de saknas. */

@@ -26,6 +26,14 @@ class BlePermissionViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Anropas när systemets behörighetsdialog inte gick att öppna. Behörigheten kan då bara slås på
+     * i appens inställningar, så samma vy visas som när användaren har nekat permanent.
+     */
+    fun onPermissionDialogUnavailable() {
+        _uiState.value = BlePermissionUiState.PermanentlyDenied()
+    }
+
     /** Anropas när appens inställningar inte gick att öppna. */
     fun onSettingsUnavailable() {
         _uiState.update { state ->
