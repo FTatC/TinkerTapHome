@@ -1,12 +1,5 @@
 package io.github.ftatc.tinkertaphome.ui.permissions
 
-import android.content.Context
-import android.content.Intent
-import android.net.Uri
-import android.provider.Settings
-import androidx.activity.compose.LocalActivity
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -19,7 +12,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -33,6 +25,7 @@ import io.github.ftatc.tinkertaphome.R
  * som ber om dem, eller en länk till appens inställningar om användaren har nekat permanent.
  *
  * Det här är den enda platsen där UI-lagret använder Android-API:er för behörigheter (se CLAUDE.md).
+ * Själva anropen till Android ligger i [rememberPermissionRequest] och [appSettingsOpener].
  */
 @Composable
 fun BlePermissionGate(
@@ -40,16 +33,10 @@ fun BlePermissionGate(
     content: @Composable () -> Unit,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val activity = LocalActivity.current
-    val context = LocalContext.current
+    val requestPermissions = rememberPermissionRequest(onResult = viewModel::onPermissionResult)
+    val openAppSettings = appSettingsOpener(onUnavailable = viewModel::onSettingsUnavailable)
 
-    val launcher = rememberLauncherForActivityResult(RequestMultiplePermissions()) { results ->
-        val result = interpretPermissionResult(results) { permission ->
-            activity?.shouldShowRequestPermissionRationale(permission) == true
-        }
-        viewModel.onPermissionResult(result)
-    }
-
+    // Behörigheten kan ha ändrats i inställningarna medan appen låg i bakgrunden.
     LifecycleResumeEffect(viewModel) {
         viewModel.onResume()
         onPauseOrDispose { }
@@ -57,10 +44,8 @@ fun BlePermissionGate(
 
     BlePermissionContent(
         uiState = uiState,
-        onRequestPermissions = { permissions -> launcher.launch(permissions.toTypedArray()) },
-        onOpenSettings = {
-            if (!context.tryStartActivity(appSettingsIntent(context))) viewModel.onSettingsUnavailable()
-        },
+        onRequestPermissions = requestPermissions,
+        onOpenSettings = openAppSettings,
         content = content,
     )
 }
@@ -118,6 +103,3 @@ private fun PermissionExplanation(message: Int, buttonLabel: Int? = null, onClic
         }
     }
 }
-
-private fun appSettingsIntent(context: Context): Intent =
-    Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null))
