@@ -33,7 +33,10 @@ fun BlePermissionGate(
     content: @Composable () -> Unit,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val requestPermissions = rememberPermissionRequest(onResult = viewModel::onPermissionResult)
+    val requestPermissions = rememberPermissionRequest(
+        onResult = viewModel::onPermissionResult,
+        onUnavailable = viewModel::onPermissionDialogUnavailable,
+    )
     val openAppSettings = appSettingsOpener(onUnavailable = viewModel::onSettingsUnavailable)
 
     // Behörigheten kan ha ändrats i inställningarna medan appen låg i bakgrunden.

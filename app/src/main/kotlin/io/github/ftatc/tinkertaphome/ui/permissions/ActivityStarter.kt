@@ -3,6 +3,7 @@ package io.github.ftatc.tinkertaphome.ui.permissions
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
+import androidx.activity.result.ActivityResultLauncher
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 
@@ -13,6 +14,18 @@ import androidx.compose.ui.platform.LocalContext
 internal fun Context.tryStartActivity(intent: Intent): Boolean =
     try {
         startActivity(intent)
+        true
+    } catch (e: ActivityNotFoundException) {
+        false
+    }
+
+/**
+ * Startar launchern med [input] och returnerar `false` i stället för att krascha om ingen aktivitet
+ * kan ta emot den, på samma sätt som [tryStartActivity].
+ */
+internal fun <I> ActivityResultLauncher<I>.tryLaunch(input: I): Boolean =
+    try {
+        launch(input)
         true
     } catch (e: ActivityNotFoundException) {
         false
