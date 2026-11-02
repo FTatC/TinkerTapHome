@@ -28,6 +28,17 @@ render.experimental.xml
 *.jks
 *.keystore
 
+# Signeringsuppgifter och andra hemligheter. Committas aldrig (se CLAUDE.md).
+keystore.properties
+signing.properties
+secrets.properties
+*.p12
+*.pem
+.env
+
+# Claude Code: personliga inställningar per utvecklare
+.claude/settings.local.json
+
 # Google Services (e.g. APIs or Firebase)
 google-services.json
 
