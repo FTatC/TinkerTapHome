@@ -3,12 +3,22 @@ package io.github.ftatc.tinkertaphome.ui.permissions
 import android.content.Intent
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import androidx.compose.material3.Button
+import androidx.compose.material3.Text
+import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class TryStartActivityTest {
+
+    @get:Rule
+    val composeRule = createComposeRule()
 
     @Test
     fun returnsFalseInsteadOfCrashingWhenNoActivityHandlesTheIntent() {
@@ -19,5 +29,25 @@ class TryStartActivityTest {
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 
         assertFalse(context.tryStartActivity(intent))
+    }
+
+    @Test
+    fun activityStarterCallsOnUnavailableWhenNoActivityHandlesTheIntent() {
+        var unavailable = false
+        composeRule.setContent {
+            val start = activityStarter(
+                intent = { Intent("io.github.ftatc.tinkertaphome.test.NO_SUCH_ACTION") },
+                onUnavailable = { unavailable = true },
+            )
+            Button(onClick = start) { Text(START) }
+        }
+
+        composeRule.onNodeWithText(START).performClick()
+
+        assertTrue(unavailable)
+    }
+
+    private companion object {
+        const val START = "Starta"
     }
 }
