@@ -112,6 +112,7 @@ Nya moduler använder ett av pluginsen. Kopiera inte `compileSdk`, `minSdk`, `co
 ## Saker agenten INTE ska göra
 
 - **Lägg inte till externa beroenden** (bibliotek, Gradle-plugins) utan att fråga först. Det gäller särskilt BLE-bibliotek som Nordic BLE eller RxAndroidBle.
+- **Stäng inte av och kringgå inte beroendeverifieringen** (`gradle/verification-metadata.xml`, se Vanliga kommandon). Ett fel om en checksumma som inte stämmer kan betyda att ett beroende har manipulerats. Undersök det och fråga mig innan filen ändras för att få bygget grönt.
 - **Byt inte databas eller lagringslösning** (Room/DataStore) och byt inte DI-ramverk, UI-ramverk eller arkitekturmönster.
 - **Lägg inte till molnfunktioner, analys, telemetri eller nätverksanrop.** Appen är lokal och offline med flit.
 - **Ändra inte `minSdk`, `targetSdk`, Kotlin- eller AGP-version** utan att fråga.
@@ -134,6 +135,15 @@ Nya moduler använder ett av pluginsen. Kopiera inte `compileSdk`, `minSdk`, `co
 ./gradlew lint                   # Lint
 ./gradlew :domain:test           # Bara en modul
 ```
+
+**Beroendeverifiering:** Gradle kontrollerar SHA-256 för varje beroende mot `gradle/verification-metadata.xml` och stoppar bygget om något saknas eller inte stämmer. När ett beroende har lagts till eller uppdaterats (efter godkännande), uppdatera filen med samma uppgifter som annars körs, så att även lint och de instrumenterade testernas verktyg kommer med:
+
+```bash
+./gradlew --write-verification-metadata sha256 --refresh-dependencies --no-configuration-cache \
+    test lint assembleDebug assembleRelease assembleDebugAndroidTest connectedAndroidTest
+```
+
+Granska diffen innan den committas: nya poster ska bara gälla de beroenden som ändrades.
 
 Gradle behöver en JDK och Android SDK. Om `JAVA_HOME` eller `ANDROID_HOME` saknas i miljön, sätt dem för kommandot, till exempel med Android Studios inbyggda JDK:
 
