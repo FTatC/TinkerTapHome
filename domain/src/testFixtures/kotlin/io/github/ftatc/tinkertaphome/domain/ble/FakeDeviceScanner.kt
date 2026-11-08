@@ -8,17 +8,29 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.onStart
 
-/** Fake för tester. Skicka resultat med [emit] och se om skanningen pågår via [isScanning]. */
+/**
+ * Fake för tester. Skicka resultat med [emit] och se om skanningen pågår via [isScanning].
+ * Fälten är `@Volatile` eftersom instrumenterade tester läser dem från en annan tråd än huvudtråden.
+ */
 class FakeDeviceScanner : DeviceScanner {
 
     private val results = MutableSharedFlow<Outcome<List<ScannedDevice>, BleError>>(replay = 1)
 
+    @Volatile
     var isScanning: Boolean = false
+        private set
+
+    /** Antal skanningar som har startats. */
+    @Volatile
+    var startCount: Int = 0
         private set
 
     suspend fun emit(outcome: Outcome<List<ScannedDevice>, BleError>) = results.emit(outcome)
 
     override fun scan(): Flow<Outcome<List<ScannedDevice>, BleError>> = results
-        .onStart { isScanning = true }
+        .onStart {
+            startCount++
+            isScanning = true
+        }
         .onCompletion { isScanning = false }
 }
