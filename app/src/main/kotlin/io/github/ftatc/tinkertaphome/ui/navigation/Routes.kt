@@ -6,6 +6,10 @@ import kotlinx.serialization.Serializable
 @Serializable
 data object DeviceListRoute
 
+/** Detaljskärmen för en sparad enhet, där den kan anslutas och kopplas ner. */
+@Serializable
+data class DeviceDetailRoute(val deviceId: Long)
+
 /** Skärmen som söker efter nya enheter i närheten. */
 @Serializable
 data object ScanRoute

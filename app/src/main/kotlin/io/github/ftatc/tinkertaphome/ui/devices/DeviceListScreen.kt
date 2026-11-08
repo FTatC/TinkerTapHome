@@ -1,5 +1,6 @@
 package io.github.ftatc.tinkertaphome.ui.devices
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -24,18 +25,26 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.ftatc.tinkertaphome.R
 import io.github.ftatc.tinkertaphome.domain.model.BleAddress
+import io.github.ftatc.tinkertaphome.domain.model.ConnectedDevice
+import io.github.ftatc.tinkertaphome.domain.model.ConnectionState
 import io.github.ftatc.tinkertaphome.domain.model.Device
 import io.github.ftatc.tinkertaphome.domain.model.DeviceError
+import io.github.ftatc.tinkertaphome.ui.device.connectionStateLabel
 import io.github.ftatc.tinkertaphome.ui.theme.TinkerTapTheme
 
-/** Skärmen med sparade enheter. Kopplar ViewModel till den tillståndslösa [DeviceListContent]. */
+/**
+ * Skärmen med sparade enheter. Kopplar ViewModel till den tillståndslösa [DeviceListContent].
+ *
+ * @param onDeviceClick anropas med enhetens id när användaren väljer en enhet.
+ */
 @Composable
 fun DeviceListScreen(
     onScanClick: () -> Unit,
+    onDeviceClick: (Long) -> Unit,
     viewModel: DeviceListViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    DeviceListContent(uiState = uiState, onScanClick = onScanClick)
+    DeviceListContent(uiState = uiState, onScanClick = onScanClick, onDeviceClick = onDeviceClick)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -43,6 +52,7 @@ fun DeviceListScreen(
 fun DeviceListContent(
     uiState: DeviceListUiState,
     onScanClick: () -> Unit,
+    onDeviceClick: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Scaffold(
@@ -58,7 +68,7 @@ fun DeviceListContent(
         when (uiState) {
             DeviceListUiState.Loading -> LoadingState(contentModifier)
             DeviceListUiState.Empty -> EmptyState(contentModifier)
-            is DeviceListUiState.Content -> DeviceList(uiState.devices, contentModifier)
+            is DeviceListUiState.Content -> DeviceList(uiState.devices, onDeviceClick, contentModifier)
             is DeviceListUiState.Error -> ErrorState(uiState.error, contentModifier)
         }
     }
@@ -90,12 +100,14 @@ private fun ErrorState(error: DeviceError, modifier: Modifier) {
 }
 
 @Composable
-private fun DeviceList(devices: List<Device>, modifier: Modifier) {
+private fun DeviceList(devices: List<ConnectedDevice>, onDeviceClick: (Long) -> Unit, modifier: Modifier) {
     LazyColumn(modifier = modifier) {
-        items(devices, key = { it.id }) { device ->
+        items(devices, key = { it.device.id }) { (device, connection) ->
             ListItem(
+                modifier = Modifier.clickable { onDeviceClick(device.id) },
                 headlineContent = { Text(device.name) },
                 supportingContent = { Text(device.address.value) },
+                trailingContent = { Text(connectionStateLabel(connection)) },
             )
         }
     }
@@ -107,10 +119,11 @@ private fun DeviceListContentPreview() {
     TinkerTapTheme {
         DeviceListContent(
             onScanClick = {},
+            onDeviceClick = {},
             uiState = DeviceListUiState.Content(
                 listOf(
-                    previewDevice(id = 1, address = "AA:BB:CC:DD:EE:01", name = "Lampa"),
-                    previewDevice(id = 2, address = "AA:BB:CC:DD:EE:02", name = "Relä"),
+                    ConnectedDevice(previewDevice(id = 1, address = "AA:BB:CC:DD:EE:01", name = "Lampa"), ConnectionState.Connected),
+                    ConnectedDevice(previewDevice(id = 2, address = "AA:BB:CC:DD:EE:02", name = "Relä"), ConnectionState.Disconnected),
                 ),
             ),
         )

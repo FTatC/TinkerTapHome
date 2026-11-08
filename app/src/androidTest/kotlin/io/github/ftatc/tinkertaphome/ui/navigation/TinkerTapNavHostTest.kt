@@ -29,13 +29,21 @@ class TinkerTapNavHostTest {
 
     private val device = testScannedDevice(id = 1, name = "Lampa")
     private var openedRoute: SaveDeviceRoute? = null
+    private var openedDetail: DeviceDetailRoute? = null
     private var scanLifecycle: Lifecycle.State? = null
 
     private fun showNavHost() {
         composeRule.setContent {
             TinkerTapNavHost(
-                deviceListScreen = { onScanClick ->
-                    Button(onClick = onScanClick) { Text(DEVICE_LIST) }
+                deviceListScreen = { onScanClick, onDeviceClick ->
+                    Column {
+                        Button(onClick = onScanClick) { Text(DEVICE_LIST) }
+                        Button(onClick = { onDeviceClick(DEVICE_ID) }) { Text(SAVED_DEVICE) }
+                    }
+                },
+                deviceDetailScreen = { route ->
+                    openedDetail = route
+                    Text(DETAIL)
                 },
                 scanScreen = { onDeviceClick ->
                     val state by LocalLifecycleOwner.current.lifecycle.currentStateFlow.collectAsState()
@@ -91,6 +99,28 @@ class TinkerTapNavHostTest {
     }
 
     @Test
+    fun choosingASavedDeviceOpensItsDetailScreen() {
+        showNavHost()
+
+        composeRule.onNodeWithText(SAVED_DEVICE).performClick()
+
+        composeRule.onNodeWithText(DETAIL).assertIsDisplayed()
+        assertEquals(DeviceDetailRoute(DEVICE_ID), openedDetail)
+    }
+
+    @Test
+    fun backFromTheDetailScreenReturnsToTheDeviceList() {
+        showNavHost()
+        composeRule.onNodeWithText(SAVED_DEVICE).performClick()
+        composeRule.onNodeWithText(DETAIL).assertIsDisplayed()
+
+        composeRule.runOnUiThread { composeRule.activity.onBackPressedDispatcher.onBackPressed() }
+
+        composeRule.onNodeWithText(DEVICE_LIST).assertIsDisplayed()
+        composeRule.onNodeWithText(DETAIL).assertDoesNotExist()
+    }
+
+    @Test
     fun choosingADeviceOpensTheSaveDialogWithItsAddressAndName() {
         showNavHost()
 
@@ -135,6 +165,9 @@ class TinkerTapNavHostTest {
 
     private companion object {
         const val DEVICE_LIST = "Enhetslista"
+        const val SAVED_DEVICE = "Sparad enhet"
+        const val DETAIL = "Detaljskärm"
+        const val DEVICE_ID = 7L
         const val SCAN = "Sökskärm"
         const val SAVE = "Spara"
         const val CANCEL = "Avbryt"

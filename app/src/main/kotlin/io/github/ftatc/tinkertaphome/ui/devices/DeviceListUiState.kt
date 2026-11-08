@@ -1,6 +1,6 @@
 package io.github.ftatc.tinkertaphome.ui.devices
 
-import io.github.ftatc.tinkertaphome.domain.model.Device
+import io.github.ftatc.tinkertaphome.domain.model.ConnectedDevice
 import io.github.ftatc.tinkertaphome.domain.model.DeviceError
 
 /** UI-tillståndet för enhetslistan. */
@@ -10,7 +10,7 @@ sealed interface DeviceListUiState {
 
     data object Empty : DeviceListUiState
 
-    data class Content(val devices: List<Device>) : DeviceListUiState
+    data class Content(val devices: List<ConnectedDevice>) : DeviceListUiState
 
     data class Error(val error: DeviceError) : DeviceListUiState
 }
