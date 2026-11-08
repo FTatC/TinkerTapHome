@@ -22,6 +22,12 @@ inline fun <T, E, R> Outcome<T, E>.map(transform: (T) -> R): Outcome<R, E> = whe
     is Outcome.Failure -> this
 }
 
+/** Kör nästa steg med värdet vid [Outcome.Success]. Vid [Outcome.Failure] körs inget mer och felet skickas vidare. */
+inline fun <T, E, R> Outcome<T, E>.flatMap(next: (T) -> Outcome<R, E>): Outcome<R, E> = when (this) {
+    is Outcome.Success -> next(value)
+    is Outcome.Failure -> this
+}
+
 /**
  * Skickar vidare varje resultat och avslutar flödet direkt efter det första [Outcome.Failure].
  * Felet skickas alltså med, men inget efter det.

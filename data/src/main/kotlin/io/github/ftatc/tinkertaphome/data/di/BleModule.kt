@@ -7,6 +7,10 @@ import dagger.hilt.components.SingletonComponent
 import io.github.ftatc.tinkertaphome.data.ble.AndroidBleScanSource
 import io.github.ftatc.tinkertaphome.data.ble.AndroidDeviceScanner
 import io.github.ftatc.tinkertaphome.data.ble.BleScanSource
+import io.github.ftatc.tinkertaphome.data.ble.gatt.AndroidDeviceConnection
+import io.github.ftatc.tinkertaphome.data.ble.gatt.AndroidGattConnector
+import io.github.ftatc.tinkertaphome.data.ble.gatt.GattConnector
+import io.github.ftatc.tinkertaphome.domain.ble.DeviceConnection
 import io.github.ftatc.tinkertaphome.domain.ble.DeviceScanner
 
 @Module
@@ -18,4 +22,10 @@ internal abstract class BleModule {
 
     @Binds
     abstract fun bindBleScanSource(impl: AndroidBleScanSource): BleScanSource
+
+    @Binds
+    abstract fun bindDeviceConnection(impl: AndroidDeviceConnection): DeviceConnection
+
+    @Binds
+    abstract fun bindGattConnector(impl: AndroidGattConnector): GattConnector
 }

@@ -28,6 +28,23 @@ class OutcomeTest {
     }
 
     @Test
+    fun `flatMap runs the next step with the value of a success`() {
+        val outcome: Outcome<Int, String> = Outcome.Success(2)
+
+        assertEquals(Outcome.Success("2"), outcome.flatMap { Outcome.Success(it.toString()) })
+        assertEquals(Outcome.Failure("nästa"), outcome.flatMap<Int, String, Int> { Outcome.Failure("nästa") })
+    }
+
+    @Test
+    fun `flatMap leaves a failure unchanged and does not run the next step`() {
+        val outcome: Outcome<Int, String> = Outcome.Failure("fel")
+
+        val next = outcome.flatMap<Int, String, Int> { fail("nästa steg ska inte köras"); Outcome.Success(it) }
+
+        assertEquals(Outcome.Failure("fel"), next)
+    }
+
+    @Test
     fun `takeUntilFailure passes on successes and stops right after the first failure`() = runTest {
         val outcomes = flowOf<Outcome<Int, String>>(
             Outcome.Success(1),
