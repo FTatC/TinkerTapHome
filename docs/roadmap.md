@@ -1,6 +1,36 @@
 # Roadmap: nästa steg i implementationen av TinkerTapHome
 
+## Status (2026-11-08)
+
+| Fas | Status | PR |
+|---|---|---|
+| 0 Städning | ✅ Klar | #3 |
+| 1.1 Instrumenterade tester lokalt | ✅ Klar | #5 |
+| 1.2 Gemensam testdata | ✅ Klar | #6 |
+| 1.3 `BleAddress` | ✅ Klar | #7 |
+| 1.4 Fel som data i enhetslistan | ✅ Klar | #8 |
+| 1.5 Fast plats för migreringar | ✅ Klar | #9 |
+| 1.6 Konventionsplugins | ✅ Klar | #10 |
+| 1.7 Språk i koden | ✅ Klar | #11 |
+| 2.1 Behörigheter | ✅ Klar | #12, #21, #22 |
+| 2.2 Skanning bakom ett interface | ✅ Klar | #13 |
+| 3 Skanningsskärm och navigation | ✅ Klar | #14, #25 |
+| 4 Spara en enhet | ✅ Klar | #15, #19 |
+| 5 Anslutning och GATT-kö | ⏳ Nästa | – |
+| 6 Styrning via enhetsprotokollet | ⬜ Väntar på protokollspecifikation 🔶 | – |
+| 7 Senare | ⬜ Ej planerad i detalj | – |
+
+**Härdning utanför planen**, gjord mellan fas 4 och 5:
+- #16: Fel från externa anrop hanteras i stället för att tappas eller krascha appen.
+- #17: Enhetsnamn från reklampaket valideras och skanningslistan har ett tak.
+- #18: Gradle Plugin Portal får bara leverera de plugins som behövs.
+- #20: Tydligare namn och mer lättlästa skanningsflöden.
+- #23: Beroendeverifiering med SHA-256 (`gradle/verification-metadata.xml`).
+- #24: Signeringsuppgifter och andra hemliga filer ignoreras av git.
+
 ## Context
+
+*Ursprunglig bakgrund från när planen skrevs.*
 
 Skelettet är på plats och mergat till `main` (PR #2). Det har tre moduler, `:app`, `:domain` och `:data`, och en enhetslista som läser från Room. Synlighetsfixen för `:data` ligger på `fix/data-module-visibility` och väntar på PR.
 
@@ -12,12 +42,12 @@ Planen gör därför först de grundläggande rättelserna (fas 1) och bygger se
 
 ---
 
-## Fas 0: Städning (innan något nytt påbörjas)
+## ✅ Fas 0: Städning (innan något nytt påbörjas)
 
 | Steg | Vad | Filer |
 |---|---|---|
-| 0.1 | Mergea PR:en för `fix/data-module-visibility` | – |
-| 0.2 | 🔶 Bestäm vad som ska göras med Android Studios ocommittade ändringar: foojay-pluginen och `org.gradle.tooling.parallel`. Om de ska vara kvar läggs de i `chore/gradle-jdk-toolchain`. | `settings.gradle.kts`, `gradle.properties`, `gradle/gradle-daemon-jvm.properties` |
+| 0.1 | ✅ Mergea PR:en för `fix/data-module-visibility` | – |
+| 0.2 | ✅ (beslut: behålls, PR #3) Bestäm vad som ska göras med Android Studios ocommittade ändringar: foojay-pluginen och `org.gradle.tooling.parallel`. Om de ska vara kvar läggs de i `chore/gradle-jdk-toolchain`. | `settings.gradle.kts`, `gradle.properties`, `gradle/gradle-daemon-jvm.properties` |
 
 ---
 
@@ -25,11 +55,11 @@ Planen gör därför först de grundläggande rättelserna (fas 1) och bygger se
 
 Ordningen är vald så att datamodellen är rättad innan BLE-koden börjar använda den. CI väntar till senare (fas 7). Tills dess körs alla tester lokalt.
 
-### 1.1 Kör de instrumenterade testerna lokalt: inga kodändringar
+### ✅ 1.1 Kör de instrumenterade testerna lokalt: inga kodändringar
 - Starta en emulator och kör `./gradlew connectedAndroidTest`. Då körs `DeviceDaoTest` och `DeviceListContentTest`, som hittills bara har kompilerats.
 - Om något test fallerar rättas det på en `fix/`-branch innan fas 1.2 påbörjas.
 
-### 1.2 Gemensam testdata: `chore/test-fixtures`
+### ✅ 1.2 Gemensam testdata: `chore/test-fixtures`
 - **Ny:** `domain/src/testFixtures/.../domain/model/TestDevices.kt` med `fun testDevice(id: Long = 1, name: String = "Lampa", address: String = …)`.
 - **Ersätt de upprepade `Device(...)`-raderna i:**
   - `ObserveDevicesUseCaseTest.kt`
@@ -41,7 +71,7 @@ Ordningen är vald så att datamodellen är rättad innan BLE-koden börjar anv�
 - **`RoomDeviceRepositoryTest.kt`:** ta bort `FakeDeviceDao.insert`, som inte används, eller låt den kasta `NotImplementedError` tills den behövs.
 - **`DeviceListViewModel.kt`:** gör `toUiState` till `private` och döp om den till `List<Device>.toDeviceListUiState()`.
 
-### 1.3 `BleAddress` som value class: `fix/ble-address-normalization`
+### ✅ 1.3 `BleAddress` som value class: `fix/ble-address-normalization`
 - **Ny:** `domain/.../domain/model/BleAddress.kt`
   - `@JvmInline value class BleAddress private constructor(val value: String)`
   - `companion fun parse(raw: String): BleAddress?` normaliserar till versaler och kontrollerar formatet `XX:XX:XX:XX:XX:XX`.
@@ -54,7 +84,7 @@ Ordningen är vald så att datamodellen är rättad innan BLE-koden börjar anv�
 - **Regressionstest:** `"aa:bb:…"` och `"AA:BB:…"` ger samma `BleAddress`.
 - ✅ **Beslut (2026-11-01): enheterna parkopplas (bondas).** Android ger då en stabil identitetsadress, så BLE-adressen används som enhetens identitet och är unik i databasen. Parkopplingen görs när enheten ansluts i fas 5. Ingen egen identifierare i reklampaketet behövs.
 
-### 1.4 Fel som data i enhetslistan: `fix/device-list-error-state`
+### ✅ 1.4 Fel som data i enhetslistan: `fix/device-list-error-state`
 - **Ny:** `domain/.../domain/model/DeviceError.kt`: `sealed interface DeviceError { data object StorageUnavailable }`.
 - **`DeviceRepository.observeDevices()`** returnerar `Flow<Outcome<List<Device>, DeviceError>>`. Det kräver en ny `domain/.../domain/Outcome.kt` (sealed: `Success` och `Failure`), som är den gemensamma resultattyp CLAUDE.md beskriver.
 - **`RoomDeviceRepository`:** `.catch { e -> if (e is CancellationException) throw e; emit(Failure(StorageUnavailable)) }`.
@@ -65,17 +95,17 @@ Ordningen är vald så att datamodellen är rättad innan BLE-koden börjar anv�
   - `CancellationException` sväljs inte.
   - Ett Compose-test för feltillståndet.
 
-### 1.5 Fast plats för migreringar: ingår i 1.4 eller görs separat
+### ✅ 1.5 Fast plats för migreringar: ingår i 1.4 eller görs separat
 - **Ny:** `data/.../data/local/Migrations.kt` med `internal val ALL_MIGRATIONS: Array<Migration> = emptyArray()`.
 - **`DatabaseModule.kt`:** `.addMigrations(*ALL_MIGRATIONS)`.
 - **Ny:** `data/src/androidTest/.../MigrationTest.kt` med `MigrationTestHelper` och `runMigrationsAndValidate` för alla migreringar i `ALL_MIGRATIONS`. Så länge listan är tom gör testet ingenting.
 
-### 1.6 Konventionsplugins: `chore/build-logic` (görs innan fas 2 lägger till fler moduler)
+### ✅ 1.6 Konventionsplugins: `chore/build-logic` (görs innan fas 2 lägger till fler moduler)
 - **Ny:** `build-logic/` som included build med `tinkertap.android.library`, `tinkertap.android.application` och `tinkertap.jvm.library`. Pluginsen sätter compileSdk, minSdk, jvmTarget och testberoenden.
 - **Ändra:** `settings.gradle.kts` (`includeBuild("build-logic")`), `app/`, `data/` och `domain/build.gradle.kts` krymper.
 - Det kommer inga nya externa beroenden. Pluginsen använder AGP och KGP, som redan finns i version catalog.
 
-### 1.7 🔶 Språk i koden
+### ✅ 1.7 Språk i koden
 - Bestäm vilket språk som gäller för KDoc, kommentarer, testnamn och commits.
 - Lägg in beslutet i CLAUDE.md. Ingen kod ändras retroaktivt.
 
@@ -83,8 +113,8 @@ Ordningen är vald så att datamodellen är rättad innan BLE-koden börjar anv�
 
 ## Fas 2: Abstraktion för BLE och behörighetsflödet
 
-### 2.1 Behörigheter: `feature/ble-permissions`
-- 🔶 **`AndroidManifest.xml`:** CLAUDE.md kräver godkännande. Ändringarna och skälen:
+### ✅ 2.1 Behörigheter: `feature/ble-permissions`
+- ✅ **`AndroidManifest.xml`:** godkänt och infört i PR #12. Ändringarna och skälen:
   - `BLUETOOTH_SCAN` med `usesPermissionFlags="neverForLocation"` för att kunna skanna utan platsbehörighet.
   - `BLUETOOTH_CONNECT` för att ansluta och läsa enheternas namn.
   - `<uses-feature android:name="android.hardware.bluetooth_le" android:required="true"/>`.
@@ -97,7 +127,7 @@ Ordningen är vald så att datamodellen är rättad innan BLE-koden börjar anv�
   - `ui/permissions/PermissionViewModel.kt` och `PermissionUiState.kt`.
 - **Tester:** ViewModel med `FakePermissionChecker` i domains `testFixtures`, och ett Compose-test av gatens tre tillstånd.
 
-### 2.2 Skanning bakom ett interface: `feature/ble-scan-core`
+### ✅ 2.2 Skanning bakom ett interface: `feature/ble-scan-core`
 - **`:domain`:**
   - `model/ScannedDevice.kt` (`address: BleAddress`, `name: String?`, `rssi: Int`)
   - `model/BleError.kt` (sealed: `BluetoothOff`, `PermissionMissing`, `ScanFailed(code)`)
@@ -117,9 +147,9 @@ Ordningen är vald så att datamodellen är rättad innan BLE-koden börjar anv�
 
 ---
 
-## Fas 3: Skanningsskärm och navigation: `feature/device-scan-screen`
+## ✅ Fas 3: Skanningsskärm och navigation: `feature/device-scan-screen`
 
-- 🔶 **Navigation Compose** behöver pluginen `kotlinx-serialization` för typsäkra rutter. Det är ett nytt Gradle-plugin och kräver godkännande. Alternativet är strängbaserade rutter utan pluginen.
+- ✅ **Beslut: typsäkra rutter med `kotlinx-serialization`.** Navigation Compose behöver pluginen `kotlinx-serialization` för typsäkra rutter. Det är ett nytt Gradle-plugin och kräver godkännande. Alternativet är strängbaserade rutter utan pluginen.
 - **`:app`:**
   - `ui/navigation/TinkerTapNavHost.kt` och `Routes.kt`
   - `ui/scan/ScanScreen.kt`, `ScanViewModel.kt` och `ScanUiState.kt` (`Idle`, `Scanning(results)`, `Error(BleError)`)
@@ -134,7 +164,7 @@ Ordningen är vald så att datamodellen är rättad innan BLE-koden börjar anv�
 
 ---
 
-## Fas 4: Spara en enhet (första skrivningen): `feature/save-device`
+## ✅ Fas 4: Spara en enhet (första skrivningen): `feature/save-device`
 
 - **`:domain`:**
   - `usecase/SaveDeviceUseCase.kt`
@@ -151,7 +181,7 @@ Ordningen är vald så att datamodellen är rättad innan BLE-koden börjar anv�
 
 ---
 
-## Fas 5: Anslutning och GATT-kö: `feature/gatt-connection`
+## ⏳ Fas 5: Anslutning och GATT-kö: `feature/gatt-connection`
 
 - **`:domain`:**
   - `model/ConnectionState.kt` (`Disconnected`, `Connecting`, `Connected`, `Failed(BleError)`)
