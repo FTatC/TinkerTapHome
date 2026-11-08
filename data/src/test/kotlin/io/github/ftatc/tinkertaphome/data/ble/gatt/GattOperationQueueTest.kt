@@ -134,6 +134,32 @@ class GattOperationQueueTest {
     }
 
     @Test
+    fun `abandon can end a cancelled operation right away`() = runTest {
+        var abandoned = 0
+        val started = mutableListOf<String>()
+        val cancelled = async {
+            queue.withLock {
+                queue.await(
+                    TIMEOUT,
+                    start = { started += "avbruten"; null },
+                    abandon = { abandoned++; queue.failPending(ConnectionError.NotConnected) },
+                    respond = ::respondToDiscovery,
+                )
+            }
+        }
+        runCurrent()
+        cancelled.cancel()
+        val next = startDiscovery(started, "nästa")
+        runCurrent()
+
+        assertEquals(1, abandoned)
+        assertEquals(listOf("avbruten", "nästa"), started)
+        assertEquals(0, timeouts)
+        queue.offer(discovered)
+        assertEquals(Outcome.Success(GATT_SUCCESS), next.await())
+    }
+
+    @Test
     fun `a cancelled operation that never gets a response reports a timeout`() = runTest {
         val cancelled = startDiscovery()
         runCurrent()

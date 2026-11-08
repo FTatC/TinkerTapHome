@@ -37,10 +37,13 @@ internal class GattOperationQueue(private val onTimeout: () -> Unit) {
      *
      * @param start Startar operationen och returnerar `null`, eller ett fel om den inte gick att starta.
      * @param respond Gör om en händelse till resultatet, eller returnerar `null` om händelsen inte är svaret.
+     * @param abandon Anropas om den som väntar avbryts. Kan avsluta operationen direkt, till exempel
+     * genom att stänga anslutningen och anropa [failPending]. Annars väntar kön ut svaret.
      */
     suspend fun <T> await(
         timeout: Duration,
         start: () -> ConnectionError?,
+        abandon: () -> Unit = {},
         respond: (GattEvent) -> Outcome<T, ConnectionError>?,
     ): Outcome<T, ConnectionError> {
         check(mutex.isLocked) { "await måste anropas inom withLock" }
@@ -49,7 +52,7 @@ internal class GattOperationQueue(private val onTimeout: () -> Unit) {
         pending.set(operation)
         try {
             start()?.let { return Outcome.Failure(it) }
-            return awaitResponse(operation, timeout)
+            return awaitResponse(operation, timeout, abandon)
         } finally {
             pending.compareAndSet(operation, null)
         }
@@ -66,11 +69,13 @@ internal class GattOperationQueue(private val onTimeout: () -> Unit) {
     private suspend fun <T> awaitResponse(
         operation: PendingOperation<T>,
         timeout: Duration,
+        abandon: () -> Unit,
     ): Outcome<T, ConnectionError> {
         val result = try {
             withTimeoutOrNull(timeout) { operation.result.await() }
         } catch (e: CancellationException) {
-            // Android kör operationen ändå. Vänta ut svaret innan kön släpps.
+            abandon()
+            // Android kör operationen ändå, om inte abandon har avslutat den. Vänta ut svaret innan kön släpps.
             withContext(NonCancellable) { withTimeoutOrNull(timeout) { operation.result.await() } } ?: onTimeout()
             throw e
         }
