@@ -1,0 +1,54 @@
+package io.github.ftatc.tinkertaphome.domain.ble
+
+import io.github.ftatc.tinkertaphome.domain.Outcome
+import io.github.ftatc.tinkertaphome.domain.model.BleAddress
+import io.github.ftatc.tinkertaphome.domain.model.CharacteristicId
+import io.github.ftatc.tinkertaphome.domain.model.ConnectionError
+import io.github.ftatc.tinkertaphome.domain.model.ConnectionState
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.StateFlow
+
+/**
+ * Anslutningar till BLE-enheter. Implementeras i `data`-lagret.
+ *
+ * Operationer mot samma enhet körs en i taget i den ordning de anropas, eftersom Android inte klarar
+ * parallella GATT-anrop. Fel returneras som [Outcome.Failure] och kastas aldrig.
+ */
+interface DeviceConnection {
+
+    /** Anslutningsstatus för enheten med [address]. Är [ConnectionState.Disconnected] från början. */
+    fun observeState(address: BleAddress): StateFlow<ConnectionState>
+
+    /**
+     * Ansluter, parkopplar om enheten inte redan är parkopplad, och söker efter enhetens tjänster.
+     * Är enheten redan ansluten lyckas anropet direkt.
+     */
+    suspend fun connect(address: BleAddress): Outcome<Unit, ConnectionError>
+
+    /** Kopplar ner. En pågående operation avbryts och får [ConnectionError.NotConnected]. */
+    fun disconnect(address: BleAddress)
+
+    /** Läser värdet för [characteristic]. */
+    suspend fun read(address: BleAddress, characteristic: CharacteristicId): Outcome<ByteArray, ConnectionError>
+
+    /** Skriver [value] till [characteristic] och väntar på att enheten bekräftar. */
+    suspend fun write(
+        address: BleAddress,
+        characteristic: CharacteristicId,
+        value: ByteArray,
+    ): Outcome<Unit, ConnectionError>
+
+    /**
+     * Slår på notifieringar för [characteristic] när flödet samlas in och skickar varje nytt värde.
+     * Notifieringarna slås av när insamlingen avbryts.
+     *
+     * Går notifieringarna inte att slå på, eller bryts anslutningen, skickas [Outcome.Failure] och
+     * flödet avslutas. Kopplar användaren ner avslutas flödet utan fel.
+     *
+     * Bara en insamlare per characteristic stöds: när en av dem slutar slås notifieringarna av för alla.
+     */
+    fun observeNotifications(
+        address: BleAddress,
+        characteristic: CharacteristicId,
+    ): Flow<Outcome<ByteArray, ConnectionError>>
+}
