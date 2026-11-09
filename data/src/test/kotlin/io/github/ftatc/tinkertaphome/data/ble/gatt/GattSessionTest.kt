@@ -147,6 +147,49 @@ class GattSessionTest {
     }
 
     @Test
+    fun `cancelling a connect closes the connection right away and reports disconnected`() = runTest {
+        // Regressionstest: tidigare låg statusen kvar som Connecting tills tiden gick ut och blev sedan Failed(Timeout).
+        connector.connectResponse = null
+        val result = async { session.connect() }
+        runCurrent()
+
+        result.cancel()
+        runCurrent()
+
+        assertEquals(ConnectionState.Disconnected, session.state.value)
+        assertTrue(connector.handle.closed)
+        assertTrue(result.isCancelled)
+    }
+
+    @Test
+    fun `cancelling a connect while bonding closes the connection right away`() = runTest {
+        connector.bonded = false
+        respondManually()
+        val result = async { session.connect() }
+        runCurrent()
+        assertEquals(FakeRequest.CreateBond, connector.requests.last())
+
+        result.cancel()
+        runCurrent()
+
+        assertEquals(ConnectionState.Disconnected, session.state.value)
+        assertTrue(connector.handle.closed)
+    }
+
+    @Test
+    fun `can connect again after a cancelled connect`() = runTest {
+        connector.connectResponse = null
+        val cancelled = async { session.connect() }
+        runCurrent()
+        cancelled.cancel()
+        runCurrent()
+        connector.connectResponse = GattEvent.ConnectionChanged(GATT_SUCCESS, connected = true)
+
+        assertEquals(Outcome.Success(Unit), session.connect())
+        assertEquals(ConnectionState.Connected, session.state.value)
+    }
+
+    @Test
     fun `can connect again after a failure`() = runTest {
         connector.connectResponse = GattEvent.ConnectionChanged(status = 133, connected = false)
         session.connect()

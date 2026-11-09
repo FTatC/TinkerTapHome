@@ -34,7 +34,10 @@ internal class AndroidGattConnector @Inject constructor(
     override fun connect(address: String, onEvent: (GattEvent) -> Unit): GattConnectStart {
         val enabledAdapter = adapter?.takeIf { it.isEnabled } ?: return GattConnectStart.BluetoothOff
         val bondReceiver = BondStateReceiver(address, onEvent)
-        context.registerReceiver(bondReceiver, IntentFilter(BluetoothDevice.ACTION_BOND_STATE_CHANGED), Context.RECEIVER_NOT_EXPORTED)
+        // EXPORTED krävs: meddelandet skickas av Bluetooth-processen, som räknas som en annan app.
+        // Med NOT_EXPORTED kommer det aldrig fram (verifierat på enhet). Det är säkert, eftersom
+        // ACTION_BOND_STATE_CHANGED är ett skyddat systemmeddelande som andra appar inte kan skicka.
+        context.registerReceiver(bondReceiver, IntentFilter(BluetoothDevice.ACTION_BOND_STATE_CHANGED), Context.RECEIVER_EXPORTED)
         val started = startGatt(enabledAdapter, address, onEvent)
         return when (started) {
             is GattStart.Connected -> GattConnectStart.Started(AndroidGattHandle(context, started.gatt, bondReceiver))

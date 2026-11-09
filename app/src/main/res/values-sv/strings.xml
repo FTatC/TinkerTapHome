@@ -34,4 +34,22 @@
     <string name="permission_ble_permanently_denied">Bluetooth-åtkomst är avstängd för TinkerTap Home. Slå på ”Enheter i närheten” i appens inställningar.</string>
     <string name="permission_ble_open_settings">Öppna inställningar</string>
     <string name="permission_ble_settings_unavailable">Appens inställningar gick inte att öppna. Öppna appen Inställningar, gå till Appar › TinkerTap Home › Behörigheter och tillåt ”Enheter i närheten”.</string>
+    <string name="device_loading">Laddar enheten</string>
+    <string name="device_not_found">Enheten är inte längre sparad.</string>
+    <string name="device_connect">Anslut</string>
+    <string name="device_disconnect">Koppla ner</string>
+    <string name="connection_disconnected">Inte ansluten</string>
+    <string name="connection_connecting">Ansluter…</string>
+    <string name="connection_connected">Ansluten</string>
+    <string name="connection_failed">Anslutningen misslyckades</string>
+    <string name="connection_error_bluetooth_off">Bluetooth är avstängt. Slå på det och försök igen.</string>
+    <string name="connection_error_permission">Bluetooth-åtkomst saknas.</string>
+    <string name="connection_error_not_connected">Enheten är inte ansluten.</string>
+    <string name="connection_error_timeout">Enheten svarade inte i tid. Kontrollera att den är påslagen och i närheten.</string>
+    <string name="connection_error_lost">Anslutningen bröts. Enheten kan vara utom räckhåll.</string>
+    <string name="connection_error_connect_failed">Det gick inte att ansluta till enheten (fel %1$d).</string>
+    <string name="connection_error_bond_failed">Parkopplingen misslyckades eller avbröts.</string>
+    <string name="connection_error_characteristic_not_found">Enheten stöder inte den här funktionen.</string>
+    <string name="connection_error_rejected">Bluetooth är upptaget. Försök igen.</string>
+    <string name="connection_error_operation_failed">Enheten rapporterade ett fel (%1$d).</string>
 </resources>

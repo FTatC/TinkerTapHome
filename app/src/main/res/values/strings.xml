@@ -36,4 +36,22 @@
     <string name="permission_ble_permanently_denied">Bluetooth access is turned off for TinkerTap Home. Turn on \"Nearby devices\" in the app settings.</string>
     <string name="permission_ble_open_settings">Open settings</string>
     <string name="permission_ble_settings_unavailable">The app settings could not be opened. Open the Settings app, go to Apps › TinkerTap Home › Permissions and allow \"Nearby devices\".</string>
+    <string name="device_loading">Loading device</string>
+    <string name="device_not_found">This device is no longer saved.</string>
+    <string name="device_connect">Connect</string>
+    <string name="device_disconnect">Disconnect</string>
+    <string name="connection_disconnected">Not connected</string>
+    <string name="connection_connecting">Connecting…</string>
+    <string name="connection_connected">Connected</string>
+    <string name="connection_failed">Connection failed</string>
+    <string name="connection_error_bluetooth_off">Bluetooth is off. Turn it on and try again.</string>
+    <string name="connection_error_permission">Bluetooth access is missing.</string>
+    <string name="connection_error_not_connected">The device is not connected.</string>
+    <string name="connection_error_timeout">The device didn\'t respond in time. Make sure it\'s powered on and close by.</string>
+    <string name="connection_error_lost">The connection was lost. The device may be out of range.</string>
+    <string name="connection_error_connect_failed">Couldn\'t connect to the device (error %1$d).</string>
+    <string name="connection_error_bond_failed">Pairing failed or was cancelled.</string>
+    <string name="connection_error_characteristic_not_found">The device doesn\'t support this function.</string>
+    <string name="connection_error_rejected">Bluetooth is busy. Try again.</string>
+    <string name="connection_error_operation_failed">The device reported an error (%1$d).</string>
 </resources>

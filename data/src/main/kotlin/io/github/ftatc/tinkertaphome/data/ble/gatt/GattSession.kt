@@ -45,7 +45,10 @@ internal class GattSession(
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
     )
 
-    /** Ansluter, parkopplar vid behov och söker efter tjänster. Lyckas direkt om enheten redan är ansluten. */
+    /**
+     * Ansluter, parkopplar vid behov och söker efter tjänster. Lyckas direkt om enheten redan är ansluten.
+     * Avbryts anropet stängs anslutningen direkt och statusen blir [ConnectionState.Disconnected].
+     */
     suspend fun connect(): GattOutcome<Unit> = queue.withLock {
         if (_state.value == ConnectionState.Connected) return@withLock Outcome.Success(Unit)
         _state.value = ConnectionState.Connecting
@@ -107,7 +110,7 @@ internal class GattSession(
     }
 
     private suspend fun openConnection(): GattOutcome<Unit> =
-        queue.await(CONNECT_TIMEOUT, start = ::startConnection) { event ->
+        queue.await(CONNECT_TIMEOUT, start = ::startConnection, abandon = ::disconnect) { event ->
             (event as? GattEvent.ConnectionChanged)?.let {
                 if (it.connected && it.status == GATT_SUCCESS) Outcome.Success(Unit)
                 else Outcome.Failure(ConnectionError.ConnectFailed(it.status))
@@ -127,7 +130,7 @@ internal class GattSession(
      */
     private suspend fun bondIfNeeded(): GattOutcome<Unit> {
         if (handle.get()?.isBonded() == true) return Outcome.Success(Unit)
-        return queue.await(BOND_TIMEOUT, start = handleRequest { it.createBond().toError() }) { event ->
+        return queue.await(BOND_TIMEOUT, start = handleRequest { it.createBond().toError() }, abandon = ::disconnect) { event ->
             when ((event as? GattEvent.BondChanged)?.state) {
                 BondState.BONDED -> Outcome.Success(Unit)
                 BondState.NONE -> Outcome.Failure(ConnectionError.BondFailed)
@@ -137,7 +140,7 @@ internal class GattSession(
     }
 
     private suspend fun discoverServices(): GattOutcome<Unit> =
-        queue.await(OPERATION_TIMEOUT, start = handleRequest { it.discoverServices().toError() }) { event ->
+        queue.await(OPERATION_TIMEOUT, start = handleRequest { it.discoverServices().toError() }, abandon = ::disconnect) { event ->
             (event as? GattEvent.ServicesDiscovered)?.status?.toOutcome()
         }
 

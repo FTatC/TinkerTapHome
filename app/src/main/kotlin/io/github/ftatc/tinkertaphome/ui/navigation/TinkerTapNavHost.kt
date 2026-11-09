@@ -9,6 +9,8 @@ import androidx.navigation.compose.dialog
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import io.github.ftatc.tinkertaphome.domain.model.ScannedDevice
+import io.github.ftatc.tinkertaphome.ui.device.DeviceDetailScreen
+import io.github.ftatc.tinkertaphome.ui.device.DeviceDetailViewModel
 import io.github.ftatc.tinkertaphome.ui.devices.DeviceListScreen
 import io.github.ftatc.tinkertaphome.ui.save.SaveDeviceScreen
 import io.github.ftatc.tinkertaphome.ui.save.SaveDeviceViewModel
@@ -21,9 +23,9 @@ import io.github.ftatc.tinkertaphome.ui.scan.ScanScreen
 @Composable
 fun TinkerTapNavHost(
     navController: NavHostController = rememberNavController(),
-    deviceListScreen: @Composable (onScanClick: () -> Unit) -> Unit = { onScanClick ->
-        DeviceListScreen(onScanClick = onScanClick)
-    },
+    deviceListScreen: @Composable (onScanClick: () -> Unit, onDeviceClick: (Long) -> Unit) -> Unit =
+        { onScanClick, onDeviceClick -> DeviceListScreen(onScanClick = onScanClick, onDeviceClick = onDeviceClick) },
+    deviceDetailScreen: @Composable (route: DeviceDetailRoute) -> Unit = { route -> DefaultDeviceDetailScreen(route) },
     scanScreen: @Composable (onDeviceClick: (ScannedDevice) -> Unit) -> Unit = { onDeviceClick ->
         ScanScreen(onDeviceClick = onDeviceClick)
     },
@@ -32,7 +34,13 @@ fun TinkerTapNavHost(
 ) {
     NavHost(navController = navController, startDestination = DeviceListRoute) {
         composable<DeviceListRoute> {
-            deviceListScreen { navController.navigate(ScanRoute) }
+            deviceListScreen(
+                { navController.navigate(ScanRoute) },
+                { deviceId -> navController.navigate(DeviceDetailRoute(deviceId)) },
+            )
+        }
+        composable<DeviceDetailRoute> { entry ->
+            deviceDetailScreen(entry.toRoute<DeviceDetailRoute>())
         }
         composable<ScanRoute> {
             scanScreen { device -> navController.navigate(device.toSaveDeviceRoute()) }
@@ -54,6 +62,14 @@ private fun DefaultSaveDeviceScreen(route: SaveDeviceRoute, onSaved: () -> Unit,
         creationCallback = { factory -> factory.create(route) },
     )
     SaveDeviceScreen(viewModel = viewModel, onSaved = onSaved, onDismiss = onDismiss)
+}
+
+@Composable
+private fun DefaultDeviceDetailScreen(route: DeviceDetailRoute) {
+    val viewModel = hiltViewModel<DeviceDetailViewModel, DeviceDetailViewModel.Factory>(
+        creationCallback = { factory -> factory.create(route) },
+    )
+    DeviceDetailScreen(viewModel = viewModel)
 }
 
 private fun ScannedDevice.toSaveDeviceRoute() = SaveDeviceRoute(address = address.value, suggestedName = name)

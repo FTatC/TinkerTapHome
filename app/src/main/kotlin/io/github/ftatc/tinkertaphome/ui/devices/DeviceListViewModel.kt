@@ -4,9 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.ftatc.tinkertaphome.domain.Outcome
-import io.github.ftatc.tinkertaphome.domain.model.Device
+import io.github.ftatc.tinkertaphome.domain.model.ConnectedDevice
 import io.github.ftatc.tinkertaphome.domain.model.DeviceError
-import io.github.ftatc.tinkertaphome.domain.usecase.ObserveDevicesUseCase
+import io.github.ftatc.tinkertaphome.domain.usecase.ObserveConnectedDevicesUseCase
 import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -15,10 +15,10 @@ import kotlinx.coroutines.flow.stateIn
 
 @HiltViewModel
 class DeviceListViewModel @Inject constructor(
-    observeDevices: ObserveDevicesUseCase,
+    observeConnectedDevices: ObserveConnectedDevicesUseCase,
 ) : ViewModel() {
 
-    val uiState: StateFlow<DeviceListUiState> = observeDevices()
+    val uiState: StateFlow<DeviceListUiState> = observeConnectedDevices()
         .map { outcome -> outcome.toDeviceListUiState() }
         .stateIn(
             scope = viewModelScope,
@@ -32,7 +32,7 @@ class DeviceListViewModel @Inject constructor(
     }
 }
 
-private fun Outcome<List<Device>, DeviceError>.toDeviceListUiState(): DeviceListUiState = when (this) {
+private fun Outcome<List<ConnectedDevice>, DeviceError>.toDeviceListUiState(): DeviceListUiState = when (this) {
     is Outcome.Success -> if (value.isEmpty()) DeviceListUiState.Empty else DeviceListUiState.Content(value)
     is Outcome.Failure -> DeviceListUiState.Error(error)
 }
