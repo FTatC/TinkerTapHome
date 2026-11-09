@@ -6,7 +6,7 @@ targetSdk = "37"
 jvmTarget = "17"
 
 # Byggverktyg. AGP- och Kotlin-version ändras inte utan godkännande.
-agp = "9.5.0"
+agp = "9.5.1"
 kotlin = "2.4.21"
 ksp = "2.3.13"
 
