@@ -1,6 +1,6 @@
 # Roadmap: nästa steg i implementationen av TinkerTapHome
 
-## Status (2026-11-08)
+## Status (2026-11-09)
 
 | Fas | Status | PR |
 |---|---|---|
@@ -16,8 +16,8 @@
 | 2.2 Skanning bakom ett interface | ✅ Klar | #13 |
 | 3 Skanningsskärm och navigation | ✅ Klar | #14, #25 |
 | 4 Spara en enhet | ✅ Klar | #15, #19 |
-| 5 Anslutning och GATT-kö | ⏳ Nästa | – |
-| 6 Styrning via enhetsprotokollet | ⬜ Väntar på protokollspecifikation 🔶 | – |
+| 5 Anslutning och GATT-kö | ✅ Klar | #27, #28 |
+| 6 Styrning via enhetsprotokollet | ⏳ Nästa, väntar på protokollspecifikation 🔶 | – |
 | 7 Senare | ⬜ Ej planerad i detalj | – |
 
 **Härdning utanför planen**, gjord mellan fas 4 och 5:
@@ -181,7 +181,7 @@ Ordningen är vald så att datamodellen är rättad innan BLE-koden börjar anv�
 
 ---
 
-## ⏳ Fas 5: Anslutning och GATT-kö: `feature/gatt-connection`
+## ✅ Fas 5: Anslutning och GATT-kö: `feature/gatt-connection`
 
 - **`:domain`:**
   - `model/ConnectionState.kt` (`Disconnected`, `Connecting`, `Connected`, `Failed(BleError)`)
