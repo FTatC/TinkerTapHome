@@ -17,7 +17,7 @@
 | 3 Skanningsskärm och navigation | ✅ Klar | #14, #25 |
 | 4 Spara en enhet | ✅ Klar | #15, #19 |
 | 5 Anslutning och GATT-kö | ✅ Klar | #27, #28 |
-| 6 Styrning via enhetsprotokollet | ⏳ Nästa, väntar på protokollspecifikation 🔶 | – |
+| 6 Styrning via enhetsprotokollet | ⏳ Nästa. Specifikationen är klar, väntar på svar på öppna frågor 🔶 | – |
 | 7 Senare | ⬜ Ej planerad i detalj | – |
 
 **Härdning utanför planen**, gjord mellan fas 4 och 5:
@@ -199,15 +199,17 @@ Ordningen är vald så att datamodellen är rättad innan BLE-koden börjar anv�
 
   Allt testas med fake `GattHandle` och `StandardTestDispatcher`.
 - **UI:** visa anslutningsstatus på varje rad i `DeviceListScreen` och lägg till en detaljskärm `ui/device/`.
+- **Uppföljning efter protokollspecifikationen** (fråga 5 i `docs/open-questions.md`): firmwaren rekommenderar `autoConnect = true` för kända noder och `requestMtu(247)`. `AndroidGattConnector` använder i dag `autoConnect = false` och begär ingen MTU. Write With Response och en GATT-operation i taget stämmer redan.
 
 ---
 
 ## Fas 6: Styrning via enhetsprotokollet: `feature/device-control`
 
-- 🔶 **Kräver en protokollspecifikation först.** Ny fil `docs/ble-protocol.md` med service- och characteristic-UUID:er, byteformat, byteordning och versionering. Jag kan inte hitta på protokollet. Det måste komma från dig eller från era enheters firmware.
-- **`:domain`:** `model/DeviceCapability.kt` (till exempel `Switch`, `Dimmer`, `Sensor`) och use cases som `ToggleSwitchUseCase` och `ObserveSensorUseCase`.
+- ✅ **Protokollspecifikation:** `docs/ble-protocol.md` beskriver protokollversion 2 från firmwaren TinkerTapNode `0.3.1`.
+- 🔶 **Öppna frågor innan arbetet börjar:** parkoppling, token, vilka protokollversioner appen stöder med mera. De finns i `docs/open-questions.md`.
+- **`:domain`:** utgångstyperna kommer från Info: `Digital`, `Pwm` och `Servo`. Protokollet har inga sensorer. Use cases för att läsa utgångarna, autentisera och skicka kommandon, till exempel `ObserveOutputsUseCase`, `SetOutputUseCase` och `AllOffUseCase`. Fel från Result modelleras som en sealed typ.
 - **`:data`:** `ble/protocol/` med rena funktioner för kodning och avkodning. De testas bit för bit mot exempel ur specifikationen, och testerna fungerar som skydd för att protokollet inte ändras av misstag.
-- **Schemaändring?** Om förmågorna ska sparas: databasversion 2, en migration i `ALL_MIGRATIONS`, schema-JSON för version 2 och ett migreringstest.
+- **Schemaändring?** Om token ska sparas per nod (fråga 2): databasversion 2, en migration i `ALL_MIGRATIONS`, schema-JSON för version 2 och ett migreringstest.
 
 ---
 
