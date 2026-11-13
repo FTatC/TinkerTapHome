@@ -16,13 +16,12 @@ Beslut som agenten inte får ta själv (se CLAUDE.md). Varje fråga har ett svar
 
 ## 1. Parkoppling och identitet
 
-**Bakgrund:** Enligt beslut 1.3 i roadmappen (2026-11-01) ska noderna bondas så att BLE-adressen blir en stabil identitet. Firmware `0.4.0` (protokoll 3, branchen `feature/ble-pairing`) **kräver** nu parkoppling. Command kräver krypterad länk, och nya parkopplingar godtas bara under ett fönster på 30 s som öppnas med en knapp på noden. Tiden för AUTH står still medan fönstret är öppet, så dialogen hinner inte äta upp de 10 sekunderna. Namnsuffixet `TinkerTapNode-XXXX` bygger på nodens adress.
+**Bakgrund:** Enligt beslut 1.3 i roadmappen (2026-11-01) ska noderna bondas så att BLE-adressen blir en stabil identitet. Firmware `0.4.0` (protokoll 3, mergat till Arduino-repots `main`) **kräver** nu parkoppling. Command kräver krypterad länk, och nya parkopplingar godtas bara under ett fönster på 30 s som öppnas med en knapp på noden. Tiden för AUTH står still medan fönstret är öppet, så dialogen hinner inte äta upp de 10 sekunderna. Namnsuffixet `TinkerTapNode-XXXX` bygger på nodens adress.
 
 **Kvar att reda ut:**
-- Fungerar parkopplingen på kortet? Arduino-repot har testsketchen `tests/PairingTest` med en testgång för nRF Connect. Den har inte rapporterats som körd.
+- Fungerar hela parkopplingsflödet på kortet? Två fel i ArduinoBLE som fick parkopplingen att misslyckas har hittats och rättats på kortet (se `docs/ble-protocol.md`), men repot säger inte uttryckligen att flödet nu är verifierat. Testsketchen `tests/PairingTest` har en testgång för nRF Connect.
 - Är nodens egen adress stabil, alltså fast och publik, efter omstart och omflashning? Adressen är fortfarande appens identitet för noden.
 - Fungerar flödet med *Insufficient Encryption* och Androids automatiska parkoppling och omsändning mot ArduinoBLE? Eller ska appen alltid anropa `createBond()` uttryckligen innan första skrivningen?
-- När branchen är mergad i Arduino-repot: stämmer dokumentet fortfarande?
 
 **Svar:** –
 
@@ -56,7 +55,7 @@ Beslut som agenten inte får ta själv (se CLAUDE.md). Varje fråga har ett svar
 | 2 | Tid för AUTH, nedkoppling vid fel token och att `ALL_OFF` kräver AUTH |
 | 3 | Parkoppling och krypterad länk för Command |
 
-Firmware `0.1.0` saknar både `proto` och Result. På Arduino-repots `main` finns i dag protokoll 2, och protokoll 3 finns bara på `feature/ble-pairing`.
+Firmware `0.1.0` saknar både `proto` och Result. Protokoll 3 är mergat till Arduino-repots `main`. Noder som inte har flashats om sedan dess kör fortfarande protokoll 2 eller äldre.
 
 **Fråga:** Ska appen bara stödja `proto` = `3` och visa ett tydligt fel för andra versioner, så att äldre noder måste uppdateras? Det är förslaget. Alternativet är att också stödja `2` tills alla noder är uppdaterade. Skillnaden för appen är i princip om parkoppling krävs, och det står i fältet `pair`.
 

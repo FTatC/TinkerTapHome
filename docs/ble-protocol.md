@@ -2,9 +2,11 @@
 
 Det här dokumentet beskriver protokollet som TinkerTapHome använder för att prata med enheter som kör firmwaren **TinkerTapNode**. Det är underlaget för fas 6 i `docs/roadmap.md`.
 
-**Källa:** Arduino-repot `TinkerTapNode`, branchen `feature/ble-pairing` vid commit `f6a1aaf`: filerna `config.h`, `protocol.h`, `bonds.cpp`, `TinkerTapNode.ino` och avsnittet om BLE-arkitektur i repots CLAUDE.md. Det gäller firmwareversion `0.4.0` och **protokollversion 3**.
+**Källa:** Arduino-repot `TinkerTapNode`, `main` vid commit `7632768`: filerna `config.h`, `protocol.h`, `bonds.cpp`, `TinkerTapNode.ino` och avsnittet om BLE-arkitektur i repots CLAUDE.md. Det gäller firmwareversion `0.4.0` och **protokollversion 3**.
 
-> **Status:** Protokoll 3 är ännu inte mergat till `main` i Arduino-repot. Där gäller fortfarande protokoll 2 (fw `0.3.1`, `5abdec2`). Det har inte heller bekräftats att parkopplingen fungerar på kortet. Testsketchen `tests/PairingTest` finns för det. Dokumentet bör stämmas av igen när branchen är mergad.
+> **Status:** Protokoll 3 är mergat till `main` i Arduino-repot. Efter mergen har tre buggfixar tillkommit utan att protokollet eller firmwareversionen ändrats (se [Kända fel i ArduinoBLE](#kända-fel-i-arduinoble-rättade) och [Hur kommandon hanteras](#hur-kommandon-hanteras-kod)). Fixarna visar att parkopplingen har provats på kortet, men repot säger inte uttryckligen att hela flödet med appen är verifierat.
+>
+> Firmwareversionen är fortfarande `0.4.0`. En nod som flashades från `feature/ble-pairing` (`f6a1aaf`) har därför samma `fw` i Info men saknar fixarna. Sådana noder bör flashas om.
 
 Där firmwarens CLAUDE.md och dess kod skiljer sig gäller **koden**, eftersom det är den som körs på enheterna. Detaljer som bara framgår av koden är markerade med *(kod)*.
 
@@ -97,6 +99,17 @@ Gäller när `pair` = `1` i Info. Det är standard i firmwaren (`PAIRING_REQUIRE
 - Enligt firmwarens CLAUDE.md håller ArduinoBLE kvar skrivningen och utför den när länken har krypterats. Hur det samspelar med Androids omsändning bör verifieras på en riktig enhet.
 - Skrivningar med Write Without Response får inget felsvar och kan inte starta en parkoppling. Utan kryptering försvinner de tyst. Det är ytterligare ett skäl att alltid använda Write With Response.
 
+### Kända fel i ArduinoBLE (rättade)
+
+Firmwaren byggs mot en patchad kopia av ArduinoBLE 2.1.0 (`lib/ArduinoBLE/` och `patches/` i Arduino-repot). Patchen rättar två fel som märks från telefonen:
+
+| Symptom i appen | Orsak i ArduinoBLE | Rättning |
+|---|---|---|
+| Parkopplingen misslyckas ibland (*Confirm Value Failed*, `0x4`) | Android skickar en begäran om nya anslutningsparametrar några sekunder efter anslutningen. ArduinoBLE svarade på den mitt i en krypteringsberäkning och fick fel svar tillbaka. | Varje väntande HCI-kommando får en egen plats för sitt svar. |
+| En parkopplad telefon känns inte igen eller får konstiga fel när den ansluter igen | Telefonen använder en slumpad adress som noden löser upp med sparade IRK:er. Under tiden skrevs anslutningshändelsen över. | Anslutningshändelsen kopieras innan den används. |
+
+**Följder för appen:** Inga ändringar behövs, men en nod byggd utan patchen, till exempel från Arduino IDE med det vanliga biblioteket, kan ge parkopplingsfel som inte beror på appen. Det syns inte i Info.
+
 ### Tid för AUTH under parkoppling
 
 *(kod)* Tiden för AUTH (`ato`) står still medan parkopplingsfönstret är öppet. Den räknas om från början när fönstret stängs. Androids parkopplingsdialog kan därmed vänta på användaren utan att noden kopplar ner.
@@ -133,6 +146,8 @@ Bara `GET_STATE` och `AUTH` får skickas utan autentisering.
 ### Hur kommandon hanteras *(kod)*
 
 Om nedkoppling redan är beslutad, efter fel token eller när tiden för AUTH har gått ut, **ignoreras alla kommandon**. Noden skickar då inget Result, och anslutningen bryts efter cirka 200 ms.
+
+Före commit `7632768` kunde noden fastna i det läget: ArduinoBLE missade ibland bekräftelsen på nedkopplingen, så noden trodde att telefonen fortfarande var ansluten, ignorerade alla kommandon och annonserade inte. Det är rättat, och om nedkopplingen misslyckas försöker noden igen. Appen bör ändå själv koppla ner om skrivningar fortsätter att bekräftas utan Result, så att den inte blir hängande mot en nod med äldre firmware.
 
 I övriga fall kontrolleras kommandot i ordningen nedan. Det första som slår till avgör vilken status som skickas.
 
