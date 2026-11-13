@@ -368,13 +368,13 @@ Vid återanslutning behövs inte steg 5, eftersom parkopplingen finns kvar även
 
 | Rekommendation | `:data` i dag |
 |---|---|
-| `autoConnect = true` för kända noder | `connectGatt(…, autoConnect = false, …)` i `AndroidGattConnector`. `GattSession.CONNECT_TIMEOUT` (15 s) passar inte med `autoConnect = true`, där Android kan vänta hur länge som helst. |
-| Steg 3–6 inom `ato` | Saknas. Detaljskärmen ansluter men gör sedan ingenting, så en nod med `auth` = `1` kopplar ner efter 10 s och appen visar `ConnectionLost`. Varje operation har dessutom en timeout på 10 s (`OPERATION_TIMEOUT`), lika lång som hela budgeten. |
+| `autoConnect = true` för kända noder | ✅ `DeviceConnection.connect()` använder `autoConnect = true` utan tidsgräns och visar `ConnectionState.Waiting` medan Android väntar på noden. `pair()` använder `autoConnect = false` med `CONNECT_TIMEOUT`. `KeepSavedDevicesConnectedUseCase` håller sparade noder anslutna medan appen syns och ansluter igen 5 s efter ett avbrott. |
+| Steg 3–6 inom `ato` | Saknas. Appen ansluter men skickar inte `AUTH`, så en nod med `auth` = `1` kopplar ner efter 10 s och appen ansluter igen efter 5 s. Hör till steg 6.6. Varje operation har dessutom en timeout på 10 s (`OPERATION_TIMEOUT`), lika lång som hela budgeten. |
 | Omförsök vid status `133` | ✅ `GattSession` stänger och försöker igen efter 1,5 s, högst två gånger (`CONNECT_RETRIES`). |
 | `requestMtu(247)` | ✅ `GattSession` begär MTU 247 efter parkopplingen och före `discoverServices()`. Ett avslag eller en lägre MTU är inget fel. |
 | Write With Response | ✅ `WRITE_TYPE_DEFAULT` i `AndroidGattHandle` |
 | `createBond()` och väntan på `BOND_BONDED` | ✅ `GattSession` (timeout 60 s) och `AndroidGattConnector`, som tar emot `ACTION_BOND_STATE_CHANGED` |
-| Be användaren trycka på parkopplingsknappen | Saknas. `GattSession.connect()` parkopplar direkt efter anslutningen, så för en ny nod med stängt fönster blir resultatet bara `BondFailed`. |
+| Be användaren trycka på parkopplingsknappen | Delvis. `DeviceConnection.pair()` parkopplar och `connect()` parkopplar aldrig, utan ger `PairingMissing`. Steget där användaren ombeds trycka på knappen hör till steg 6.5. |
 | Upptäcka att noden har glömt telefonen | ✅ Status `5` och `15` blir `ConnectionError.PairingMissing`, som visas med en infotext om att parkoppla igen. |
 | Vänta på Result efter en skrivning | ✅ `DeviceConnection.writeAndAwaitReply()` lyssnar efter svaret innan skrivningen startar och väntar högst 2 s efter bekräftelsen (`REPLY_TIMEOUT`). Kommer inget svar stängs anslutningen med `ConnectionError.NoReply`. |
 | Filter på service-UUID vid skanning | Skanningen saknar filter med flit, eftersom appen också ska hitta andra enheter. UUID:t i reklampaketet läses inte, så TinkerTapNode känns inte igen i skanningslistan. |

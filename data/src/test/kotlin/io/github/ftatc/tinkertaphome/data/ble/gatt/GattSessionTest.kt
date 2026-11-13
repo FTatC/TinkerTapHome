@@ -43,10 +43,19 @@ class GattSessionTest {
     }
 
     @Test
-    fun `bonds before discovering services when the device is not bonded`() = runTest {
+    fun `connect uses autoConnect and pair does not`() = runTest {
+        session.connect()
+        session.disconnect()
+        session.pair()
+
+        assertEquals(listOf(true, false), connector.autoConnects)
+    }
+
+    @Test
+    fun `pair bonds before asking for mtu and discovering services when the device is not bonded`() = runTest {
         connector.bonded = false
 
-        assertEquals(Outcome.Success(Unit), session.connect())
+        assertEquals(Outcome.Success(Unit), session.pair())
 
         assertEquals(
             listOf(FakeRequest.CreateBond, FakeRequest.RequestMtu(GattSession.MTU), FakeRequest.DiscoverServices),
@@ -55,15 +64,89 @@ class GattSessionTest {
     }
 
     @Test
-    fun `is connecting until the device answers`() = runTest {
+    fun `connect never bonds and fails right away when the device is not bonded`() = runTest {
+        connector.bonded = false
+
+        assertEquals(failure(ConnectionError.PairingMissing), session.connect())
+
+        assertEquals(0, connector.connectCount)
+        assertEquals(ConnectionState.Failed(ConnectionError.PairingMissing), session.state.value)
+    }
+
+    @Test
+    fun `pair is connecting until the device answers`() = runTest {
         connector.connectResponse = null
-        val result = async { session.connect() }
+        val result = async { session.pair() }
         runCurrent()
 
         assertEquals(ConnectionState.Connecting, session.state.value)
 
         connector.emit(GattEvent.ConnectionChanged(GATT_SUCCESS, connected = true))
         assertEquals(Outcome.Success(Unit), result.await())
+        assertEquals(ConnectionState.Connected, session.state.value)
+    }
+
+    @Test
+    fun `connect waits for the device without a time limit`() = runTest {
+        connector.connectResponse = null
+        val result = async { session.connect() }
+
+        advanceTimeBy(GattSession.CONNECT_TIMEOUT * 10)
+
+        assertEquals(ConnectionState.Waiting, session.state.value)
+        assertFalse(result.isCompleted)
+
+        connector.emit(GattEvent.ConnectionChanged(GATT_SUCCESS, connected = true))
+        assertEquals(Outcome.Success(Unit), result.await())
+        assertEquals(ConnectionState.Connected, session.state.value)
+    }
+
+    @Test
+    fun `is connecting once the waited for device answers`() = runTest {
+        connector.connectResponse = null
+        respondManually()
+        val result = async { session.connect() }
+        runCurrent()
+
+        connector.emit(GattEvent.ConnectionChanged(GATT_SUCCESS, connected = true))
+        runCurrent()
+
+        assertEquals(ConnectionState.Connecting, session.state.value)
+        assertEquals(FakeRequest.RequestMtu(GattSession.MTU), connector.requests.last())
+        result.cancel()
+    }
+
+    @Test
+    fun `operations fail right away while waiting for the device`() = runTest {
+        // Regressionstest: en läsning ska inte köa bakom en anslutning som kan vänta hur länge som helst.
+        connector.connectResponse = null
+        val waiting = async { session.connect() }
+        runCurrent()
+
+        assertEquals(failure(ConnectionError.NotConnected), session.read(lamp))
+        waiting.cancel()
+    }
+
+    @Test
+    fun `disconnect stops waiting for the device`() = runTest {
+        connector.connectResponse = null
+        val result = async { session.connect() }
+        runCurrent()
+
+        session.disconnect()
+
+        assertEquals(failure(ConnectionError.NotConnected), result.await())
+        assertEquals(ConnectionState.Disconnected, session.state.value)
+        assertTrue(connector.handle.closed)
+    }
+
+    @Test
+    fun `reports an unavailable connection in the state but leaves an open one alone`() = runTest {
+        assertEquals(failure(ConnectionError.BluetoothOff), session.reportUnavailable(ConnectionError.BluetoothOff))
+        assertEquals(ConnectionState.Failed(ConnectionError.BluetoothOff), session.state.value)
+
+        connected()
+        session.reportUnavailable(ConnectionError.BluetoothOff)
         assertEquals(ConnectionState.Connected, session.state.value)
     }
 
@@ -90,7 +173,7 @@ class GattSessionTest {
     @Test
     fun `tries again after a pause when android reports gatt error 133`() = runTest {
         connector.connectResponse = GattEvent.ConnectionChanged(status = GATT_ERROR, connected = false)
-        val result = async { session.connect() }
+        val result = async { session.pair() }
         runCurrent()
 
         assertEquals(1, connector.connectCount)
@@ -154,9 +237,9 @@ class GattSessionTest {
     }
 
     @Test
-    fun `times out and closes when the device never answers`() = runTest {
+    fun `pair times out and closes when the device never answers`() = runTest {
         connector.connectResponse = null
-        val result = async { session.connect() }
+        val result = async { session.pair() }
 
         advanceTimeBy(GattSession.CONNECT_TIMEOUT + 1.seconds)
 
@@ -187,7 +270,7 @@ class GattSessionTest {
             if (request == FakeRequest.CreateBond) GattEvent.BondChanged(BondState.NONE) else connector.successFor(request)
         }
 
-        assertEquals(failure(ConnectionError.BondFailed), session.connect())
+        assertEquals(failure(ConnectionError.BondFailed), session.pair())
 
         assertTrue(connector.handle.closed)
         assertFalse(FakeRequest.DiscoverServices in connector.requests)
@@ -199,7 +282,7 @@ class GattSessionTest {
         connector.respond = { request ->
             if (request == FakeRequest.CreateBond) GattEvent.BondChanged(BondState.BONDING) else connector.successFor(request)
         }
-        val result = async { session.connect() }
+        val result = async { session.pair() }
         runCurrent()
 
         assertEquals(ConnectionState.Connecting, session.state.value)
@@ -234,10 +317,10 @@ class GattSessionTest {
     }
 
     @Test
-    fun `cancelling a connect while bonding closes the connection right away`() = runTest {
+    fun `cancelling a pair while bonding closes the connection right away`() = runTest {
         connector.bonded = false
         respondManually()
-        val result = async { session.connect() }
+        val result = async { session.pair() }
         runCurrent()
         assertEquals(FakeRequest.CreateBond, connector.requests.last())
 

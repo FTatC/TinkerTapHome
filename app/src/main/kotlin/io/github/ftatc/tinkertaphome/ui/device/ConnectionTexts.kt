@@ -11,6 +11,7 @@ import io.github.ftatc.tinkertaphome.domain.model.ConnectionState
 fun connectionStateLabel(state: ConnectionState): String = stringResource(
     when (state) {
         ConnectionState.Disconnected -> R.string.connection_disconnected
+        ConnectionState.Waiting -> R.string.connection_waiting
         ConnectionState.Connecting -> R.string.connection_connecting
         ConnectionState.Connected -> R.string.connection_connected
         is ConnectionState.Failed -> R.string.connection_failed

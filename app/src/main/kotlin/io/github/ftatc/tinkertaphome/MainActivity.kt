@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import dagger.hilt.android.AndroidEntryPoint
+import io.github.ftatc.tinkertaphome.ui.connections.KeepConnectedWhileVisible
 import io.github.ftatc.tinkertaphome.ui.navigation.TinkerTapNavHost
 import io.github.ftatc.tinkertaphome.ui.permissions.BlePermissionGate
 import io.github.ftatc.tinkertaphome.ui.theme.TinkerTapTheme
@@ -18,6 +19,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             TinkerTapTheme {
                 BlePermissionGate {
+                    KeepConnectedWhileVisible()
                     TinkerTapNavHost()
                 }
             }

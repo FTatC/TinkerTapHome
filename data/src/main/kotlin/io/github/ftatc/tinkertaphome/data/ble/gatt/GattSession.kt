@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
@@ -53,15 +54,38 @@ internal class GattSession(
     private val pendingReply = AtomicReference<PendingReply?>(null)
 
     /**
-     * Ansluter, parkopplar vid behov, ber om en större MTU och söker efter tjänster. Lyckas direkt om
-     * enheten redan är ansluten. Avbryts anropet stängs anslutningen direkt och statusen blir
-     * [ConnectionState.Disconnected].
+     * Ansluter till en enhet som inte behöver vara parkopplad, parkopplar vid behov, ber om en större
+     * MTU och söker efter tjänster. Ger upp efter [CONNECT_TIMEOUT] om enheten inte svarar. Se
+     * [io.github.ftatc.tinkertaphome.domain.ble.DeviceConnection.pair].
      */
-    suspend fun connect(): GattOutcome<Unit> = queue.withLock {
+    suspend fun pair(): GattOutcome<Unit> = open(OpenMode.PAIR)
+
+    /**
+     * Ansluter till en parkopplad enhet och väntar med status [ConnectionState.Waiting] tills den
+     * kommer inom räckhåll. Parkopplar aldrig. Se
+     * [io.github.ftatc.tinkertaphome.domain.ble.DeviceConnection.connect].
+     */
+    suspend fun connect(): GattOutcome<Unit> = open(OpenMode.KNOWN)
+
+    /**
+     * Visar att en anslutning inte går att starta, till exempel för att Bluetooth är avstängt.
+     * Ändrar inte en anslutning som är uppe eller på väg upp.
+     */
+    fun reportUnavailable(error: ConnectionError): GattOutcome<Unit> {
+        _state.update { if (it == ConnectionState.Disconnected || it is ConnectionState.Failed) ConnectionState.Failed(error) else it }
+        return Outcome.Failure(error)
+    }
+
+    /**
+     * Lyckas direkt om enheten redan är ansluten. Avbryts anropet stängs anslutningen direkt och
+     * statusen blir [ConnectionState.Disconnected].
+     */
+    private suspend fun open(mode: OpenMode): GattOutcome<Unit> = queue.withLock {
         if (_state.value == ConnectionState.Connected) return@withLock Outcome.Success(Unit)
-        _state.value = ConnectionState.Connecting
-        val result = openConnectionWithRetry()
-            .flatMap { bondIfNeeded() }
+        if (mode == OpenMode.KNOWN && !connector.isBonded(address)) return@withLock reportUnavailable(ConnectionError.PairingMissing)
+        _state.value = if (mode.autoConnect) ConnectionState.Waiting else ConnectionState.Connecting
+        val result = openConnectionWithRetry(mode)
+            .flatMap { markResponding(); if (mode == OpenMode.PAIR) bondIfNeeded() else Outcome.Success(Unit) }
             .flatMap { requestMtu() }
             .flatMap { discoverServices() }
         when (result) {
@@ -94,8 +118,7 @@ internal class GattSession(
         value: ByteArray,
         reply: CharacteristicId,
         isReply: (ByteArray) -> Boolean,
-    ): GattOutcome<ByteArray> = queue.withLock {
-        if (_state.value != ConnectionState.Connected) return@withLock Outcome.Failure(ConnectionError.NotConnected)
+    ): GattOutcome<ByteArray> = whenConnected {
         // Registreras innan skrivningen startar, eftersom svaret kan komma innan skrivningen bekräftas.
         val waiting = PendingReply(reply, isReply)
         pendingReply.set(waiting)
@@ -141,24 +164,27 @@ internal class GattSession(
      * Ansluter, och försöker igen efter en kort paus när Android svarar med [GATT_ERROR]. Felet är
      * vanligt och brukar gå över av sig självt.
      */
-    private suspend fun openConnectionWithRetry(): GattOutcome<Unit> {
+    private suspend fun openConnectionWithRetry(mode: OpenMode): GattOutcome<Unit> {
         repeat(CONNECT_RETRIES) {
-            val result = openConnection()
+            val result = openConnection(mode)
             if (result != Outcome.Failure(ConnectionError.ConnectFailed(GATT_ERROR))) return result
             handle.getAndSet(null)?.close()
             pauseBeforeRetry()
-            if (_state.value != ConnectionState.Connecting) return Outcome.Failure(ConnectionError.NotConnected)
+            if (!_state.value.isOpening()) return Outcome.Failure(ConnectionError.NotConnected)
         }
-        return openConnection()
+        return openConnection(mode)
     }
 
-    private suspend fun openConnection(): GattOutcome<Unit> =
-        queue.await(CONNECT_TIMEOUT, start = ::startConnection, abandon = ::disconnect) { event ->
+    /** Med `autoConnect` finns ingen tidsgräns, eftersom Android väntar tills enheten kommer inom räckhåll. */
+    private suspend fun openConnection(mode: OpenMode): GattOutcome<Unit> {
+        val timeout = if (mode.autoConnect) Duration.INFINITE else CONNECT_TIMEOUT
+        return queue.await(timeout, start = { startConnection(mode.autoConnect) }, abandon = ::disconnect) { event ->
             (event as? GattEvent.ConnectionChanged)?.let {
                 if (it.connected && it.status == GATT_SUCCESS) Outcome.Success(Unit)
                 else Outcome.Failure(ConnectionError.ConnectFailed(it.status))
             }
         }
+    }
 
     /** Väntar före ett nytt anslutningsförsök. Avbryts anropet blir statusen [ConnectionState.Disconnected]. */
     private suspend fun pauseBeforeRetry() {
@@ -170,8 +196,8 @@ internal class GattSession(
         }
     }
 
-    private fun startConnection(): ConnectionError? =
-        when (val started = connector.connect(address, ::onEvent)) {
+    private fun startConnection(autoConnect: Boolean): ConnectionError? =
+        when (val started = connector.connect(address, autoConnect, ::onEvent)) {
             is GattConnectStart.Started -> null.also { handle.set(started.handle) }
             GattConnectStart.BluetoothOff -> ConnectionError.BluetoothOff
             GattConnectStart.PermissionDenied -> ConnectionError.PermissionMissing
@@ -243,16 +269,27 @@ internal class GattSession(
         respond: (GattEvent) -> GattOutcome<T>?,
     ): GattOutcome<T> = whenConnected { queue.await(OPERATION_TIMEOUT, start = handleRequest(start), respond = respond) }
 
-    /** Kör [block] ensam i kön, om enheten är ansluten. */
-    private suspend fun <T> whenConnected(block: suspend () -> GattOutcome<T>): GattOutcome<T> = queue.withLock {
-        if (_state.value != ConnectionState.Connected) return@withLock Outcome.Failure(ConnectionError.NotConnected)
-        block()
+    /**
+     * Kör [block] ensam i kön, om enheten är ansluten. Statusen kontrolleras också före kön, så att
+     * anropet inte väntar bakom en anslutning som väntar på att enheten ska komma inom räckhåll.
+     */
+    private suspend fun <T> whenConnected(block: suspend () -> GattOutcome<T>): GattOutcome<T> {
+        if (_state.value != ConnectionState.Connected) return Outcome.Failure(ConnectionError.NotConnected)
+        return queue.withLock {
+            if (_state.value != ConnectionState.Connected) return@withLock Outcome.Failure(ConnectionError.NotConnected)
+            block()
+        }
     }
 
     /** Startar en operation på den öppna anslutningen, eller ger [ConnectionError.NotConnected] om den är stängd. */
     private fun handleRequest(start: (GattHandle) -> ConnectionError?): () -> ConnectionError? = {
         val open = handle.get()
         if (open == null) ConnectionError.NotConnected else start(open)
+    }
+
+    /** Enheten har svarat, så nu pågår resten av anslutningen. */
+    private fun markResponding() {
+        _state.compareAndSet(ConnectionState.Waiting, ConnectionState.Connecting)
     }
 
     /** Sätter status till ansluten, om inte anslutningen hann brytas under tiden. */
@@ -266,7 +303,7 @@ internal class GattSession(
     /** Stänger anslutningen efter ett misslyckat försök. Har användaren redan kopplat ner behålls den statusen. */
     private fun markFailed(error: ConnectionError) {
         dropConnection(error)
-        _state.compareAndSet(ConnectionState.Connecting, ConnectionState.Failed(error))
+        _state.update { if (it.isOpening()) ConnectionState.Failed(error) else it }
     }
 
     /** Stänger en öppen anslutning och sätter status till [ConnectionState.Failed]. Gör inget om den redan är stängd. */
@@ -310,6 +347,18 @@ internal class GattSession(
         private const val CHANGE_BUFFER_SIZE = 64
     }
 }
+
+/** Hur en anslutning öppnas. */
+private enum class OpenMode(val autoConnect: Boolean) {
+    /** En ny enhet som ska parkopplas. Android ger upp om den inte svarar. */
+    PAIR(autoConnect = false),
+
+    /** En sparad, parkopplad enhet. Android väntar tills den kommer inom räckhåll. */
+    KNOWN(autoConnect = true),
+}
+
+/** `true` medan en anslutning är på väg upp. */
+private fun ConnectionState.isOpening(): Boolean = this == ConnectionState.Waiting || this == ConnectionState.Connecting
 
 /** Ett svar som [GattSession.writeAndAwaitReply] väntar på. */
 private class PendingReply(

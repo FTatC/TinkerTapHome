@@ -42,11 +42,17 @@ internal interface GattConnector {
     /** `true` om telefonen har Bluetooth och det är påslaget. */
     fun isBluetoothEnabled(): Boolean
 
+    /** `true` om telefonen är parkopplad med enheten med [address]. Kräver ingen anslutning. */
+    fun isBonded(address: String): Boolean
+
     /**
      * Börjar ansluta till enheten med [address]. Alla händelser för anslutningen skickas till
      * [onEvent], från vilken tråd som helst, tills [GattHandle.close] har anropats.
+     *
+     * Med [autoConnect] väntar Android tills enheten kommer inom räckhåll, hur länge det än dröjer.
+     * Annars ger Android upp efter en kort stund.
      */
-    fun connect(address: String, onEvent: (GattEvent) -> Unit): GattConnectStart
+    fun connect(address: String, autoConnect: Boolean, onEvent: (GattEvent) -> Unit): GattConnectStart
 }
 
 /** Resultatet av att försöka starta en anslutning. */

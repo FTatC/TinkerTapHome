@@ -26,6 +26,7 @@ class AndroidDeviceConnectionTest {
 
         assertEquals(Outcome.Failure(ConnectionError.PermissionMissing), connection.connect(lamp))
         assertEquals(0, connector.connectCount)
+        assertEquals(ConnectionState.Failed(ConnectionError.PermissionMissing), connection.observeState(lamp).value)
     }
 
     @Test
@@ -34,6 +35,17 @@ class AndroidDeviceConnectionTest {
 
         assertEquals(Outcome.Failure(ConnectionError.BluetoothOff), connection.connect(lamp))
         assertEquals(0, connector.connectCount)
+        assertEquals(ConnectionState.Failed(ConnectionError.BluetoothOff), connection.observeState(lamp).value)
+    }
+
+    @Test
+    fun `pair checks bluetooth and connects without autoConnect`() = runTest {
+        connector.bluetoothEnabled = false
+        assertEquals(Outcome.Failure(ConnectionError.BluetoothOff), connection.pair(lamp))
+
+        connector.bluetoothEnabled = true
+        assertEquals(Outcome.Success(Unit), connection.pair(lamp))
+        assertEquals(listOf(false), connector.autoConnects)
     }
 
     @Test

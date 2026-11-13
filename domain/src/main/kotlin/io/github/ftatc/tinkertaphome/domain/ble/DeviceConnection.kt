@@ -20,12 +20,26 @@ interface DeviceConnection {
     fun observeState(address: BleAddress): StateFlow<ConnectionState>
 
     /**
-     * Ansluter, parkopplar om enheten inte redan är parkopplad, och söker efter enhetens tjänster.
+     * Ansluter till en enhet som inte är parkopplad än, parkopplar och söker efter enhetens tjänster.
+     * Används när en enhet sparas. Misslyckas om enheten inte svarar inom kort.
      * Är enheten redan ansluten lyckas anropet direkt.
+     */
+    suspend fun pair(address: BleAddress): Outcome<Unit, ConnectionError>
+
+    /**
+     * Ansluter till en sparad enhet och söker efter dess tjänster. Väntar med status
+     * [ConnectionState.Waiting] tills enheten kommer inom räckhåll, hur länge det än dröjer.
+     *
+     * Parkopplar aldrig: är telefonen inte parkopplad med enheten misslyckas anropet direkt med
+     * [ConnectionError.PairingMissing]. Är enheten redan ansluten lyckas anropet direkt. Fel som
+     * hindrar anslutningen, till exempel avstängt Bluetooth, syns också i [observeState].
      */
     suspend fun connect(address: BleAddress): Outcome<Unit, ConnectionError>
 
-    /** Kopplar ner. En pågående operation avbryts och får [ConnectionError.NotConnected]. */
+    /**
+     * Kopplar ner, eller slutar vänta på enheten. En pågående operation avbryts och får
+     * [ConnectionError.NotConnected]. Ett fel i statusen nollställs till [ConnectionState.Disconnected].
+     */
     fun disconnect(address: BleAddress)
 
     /** Läser värdet för [characteristic]. */

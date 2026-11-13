@@ -1,7 +1,6 @@
 package io.github.ftatc.tinkertaphome.ui.device
 
 import app.cash.turbine.test
-import io.github.ftatc.tinkertaphome.domain.Outcome
 import io.github.ftatc.tinkertaphome.domain.ble.FakeDeviceConnection
 import io.github.ftatc.tinkertaphome.domain.model.ConnectionError
 import io.github.ftatc.tinkertaphome.domain.model.ConnectionState
@@ -10,10 +9,12 @@ import io.github.ftatc.tinkertaphome.domain.model.testDevice
 import io.github.ftatc.tinkertaphome.domain.repository.FakeDeviceRepository
 import io.github.ftatc.tinkertaphome.domain.usecase.ObserveConnectedDevicesUseCase
 import io.github.ftatc.tinkertaphome.domain.usecase.ObserveDevicesUseCase
+import io.github.ftatc.tinkertaphome.domain.usecase.RetryConnectionUseCase
 import io.github.ftatc.tinkertaphome.ui.MainDispatcherRule
 import io.github.ftatc.tinkertaphome.ui.navigation.DeviceDetailRoute
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -31,16 +32,28 @@ class DeviceDetailViewModelTest {
     private fun viewModel(deviceId: Long = lampa.id) = DeviceDetailViewModel(
         route = DeviceDetailRoute(deviceId),
         observeConnectedDevices = ObserveConnectedDevicesUseCase(ObserveDevicesUseCase(repository), connection),
-        connection = connection,
+        retryConnection = RetryConnectionUseCase(connection),
     )
 
-    private fun content(state: ConnectionState, connectError: ConnectionError? = null) =
-        DeviceDetailUiState.Content(lampa, state, connectError)
+    private fun content(state: ConnectionState) = DeviceDetailUiState.Content(lampa, state)
 
     @Test
     fun `shows the device with its connection state`() = runTest {
         viewModel().uiState.test {
             assertEquals(content(ConnectionState.Disconnected), awaitItem())
+        }
+    }
+
+    @Test
+    fun `follows the connection state while the app connects by itself`() = runTest {
+        viewModel().uiState.test {
+            awaitItem()
+
+            connection.setState(lampa.address, ConnectionState.Waiting)
+            assertEquals(content(ConnectionState.Waiting), awaitItem())
+
+            connection.setState(lampa.address, ConnectionState.Connected)
+            assertEquals(content(ConnectionState.Connected), awaitItem())
         }
     }
 
@@ -72,76 +85,36 @@ class DeviceDetailViewModelTest {
     }
 
     @Test
-    fun `connect connects the device and follows its state`() = runTest {
-        connection.holdConnect = true
-        val viewModel = viewModel()
-
-        viewModel.uiState.test {
-            awaitItem()
-
-            viewModel.onConnectClick()
-            assertEquals(content(ConnectionState.Connecting), awaitItem())
-
-            connection.finishConnect(Outcome.Success(Unit))
-            assertEquals(content(ConnectionState.Connected), awaitItem())
-        }
-        assertEquals(listOf(lampa.address), connection.connectCalls)
-    }
-
-    @Test
-    fun `shows the error when the connection could not be started`() = runTest {
-        connection.connectError = ConnectionError.BluetoothOff
-        val viewModel = viewModel()
-
-        viewModel.uiState.test {
-            awaitItem()
-
-            viewModel.onConnectClick()
-
-            val shown = awaitItem() as DeviceDetailUiState.Content
-            assertEquals(ConnectionState.Disconnected, shown.connection)
-            assertEquals(ConnectionError.BluetoothOff, shown.error)
-        }
-    }
-
-    @Test
-    fun `shows the error from a failed connection`() = runTest {
-        connection.setState(lampa.address, ConnectionState.Failed(ConnectionError.BondFailed))
+    fun `shows the error from a failed connection and offers a retry`() = runTest {
+        connection.setState(lampa.address, ConnectionState.Failed(ConnectionError.PairingMissing))
 
         viewModel().uiState.test {
-            assertEquals(ConnectionError.BondFailed, (awaitItem() as DeviceDetailUiState.Content).error)
+            val shown = awaitItem() as DeviceDetailUiState.Content
+            assertEquals(ConnectionError.PairingMissing, shown.error)
+            assertTrue(shown.canRetry)
         }
     }
 
     @Test
-    fun `a new attempt clears the previous error`() = runTest {
-        connection.connectError = ConnectionError.BluetoothOff
-        val viewModel = viewModel()
-
-        viewModel.uiState.test {
-            awaitItem()
-            viewModel.onConnectClick()
-            awaitItem()
-
-            connection.connectError = null
-            viewModel.onConnectClick()
-
-            var shown = awaitItem() as DeviceDetailUiState.Content
-            assertNull(shown.error)
-            while (shown.connection != ConnectionState.Connected) shown = awaitItem() as DeviceDetailUiState.Content
-            assertNull(shown.error)
-        }
-    }
-
-    @Test
-    fun `disconnect disconnects the device`() = runTest {
+    fun `offers no retry while the connection is fine`() = runTest {
         connection.setState(lampa.address, ConnectionState.Connected)
+
+        viewModel().uiState.test {
+            val shown = awaitItem() as DeviceDetailUiState.Content
+            assertNull(shown.error)
+            assertFalse(shown.canRetry)
+        }
+    }
+
+    @Test
+    fun `retry clears the error so the app connects again`() = runTest {
+        connection.setState(lampa.address, ConnectionState.Failed(ConnectionError.BluetoothOff))
         val viewModel = viewModel()
 
         viewModel.uiState.test {
-            assertEquals(content(ConnectionState.Connected), awaitItem())
+            awaitItem()
 
-            viewModel.onDisconnectClick()
+            viewModel.onRetryClick()
 
             assertEquals(content(ConnectionState.Disconnected), awaitItem())
         }
@@ -149,13 +122,9 @@ class DeviceDetailViewModelTest {
     }
 
     @Test
-    fun `buttons do nothing before the device is loaded`() = runTest {
-        val viewModel = viewModel(deviceId = 99)
+    fun `retry does nothing before the device is loaded`() = runTest {
+        viewModel(deviceId = 99).onRetryClick()
 
-        viewModel.onConnectClick()
-        viewModel.onDisconnectClick()
-
-        assertTrue(connection.connectCalls.isEmpty())
         assertTrue(connection.disconnectCalls.isEmpty())
     }
 }
