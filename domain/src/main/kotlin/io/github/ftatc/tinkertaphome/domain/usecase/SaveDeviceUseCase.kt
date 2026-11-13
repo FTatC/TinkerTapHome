@@ -20,7 +20,8 @@ class SaveDeviceUseCase @Inject constructor(
         return when {
             cleaned.isEmpty() -> Outcome.Failure(SaveDeviceError.NameMissing)
             DeviceNames.length(cleaned) > DeviceNames.MAX_LENGTH -> Outcome.Failure(SaveDeviceError.NameTooLong)
-            else -> repository.save(address, cleaned)
+            // Tokenet anges i spara-flödet för TinkerTapNode (steg 6.5 i docs/roadmap.md).
+            else -> repository.save(address, cleaned, token = null)
         }
     }
 }

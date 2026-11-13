@@ -5,10 +5,12 @@ import io.github.ftatc.tinkertaphome.data.local.DeviceDao
 import io.github.ftatc.tinkertaphome.data.local.DeviceEntity
 import io.github.ftatc.tinkertaphome.data.local.toDomain
 import io.github.ftatc.tinkertaphome.domain.Outcome
+import io.github.ftatc.tinkertaphome.domain.map
 import io.github.ftatc.tinkertaphome.domain.model.BleAddress
 import io.github.ftatc.tinkertaphome.domain.model.Device
 import io.github.ftatc.tinkertaphome.domain.model.DeviceError
 import io.github.ftatc.tinkertaphome.domain.model.SaveDeviceError
+import io.github.ftatc.tinkertaphome.domain.node.AuthToken
 import io.github.ftatc.tinkertaphome.domain.repository.DeviceRepository
 import javax.inject.Inject
 import kotlin.coroutines.cancellation.CancellationException
@@ -25,9 +27,9 @@ internal class RoomDeviceRepository @Inject constructor(
             .map { entities -> entities.toDevicesOutcome() }
             .catch { cause -> emit(cause.toStorageFailureOrRethrow()) }
 
-    override suspend fun save(address: BleAddress, name: String): Outcome<Device, SaveDeviceError> =
+    override suspend fun save(address: BleAddress, name: String, token: AuthToken?): Outcome<Device, SaveDeviceError> =
         try {
-            val id = dao.insert(DeviceEntity(address = address.value, name = name))
+            val id = dao.insert(DeviceEntity(address = address.value, name = name, authToken = token?.value))
             Outcome.Success(Device(id = id, address = address, name = name))
         } catch (e: CancellationException) {
             throw e
@@ -36,6 +38,23 @@ internal class RoomDeviceRepository @Inject constructor(
             Outcome.Failure(SaveDeviceError.AlreadySaved)
         } catch (e: Exception) {
             Outcome.Failure(SaveDeviceError.StorageUnavailable)
+        }
+
+    /** Ett token i databasen som inte längre är giltigt räknas som inget token, så att användaren får ange ett nytt. */
+    override suspend fun authToken(address: BleAddress): Outcome<AuthToken?, DeviceError> =
+        storage { dao.findByAddress(address.value)?.authToken?.let(AuthToken::parse) }
+
+    override suspend fun updateAuthToken(address: BleAddress, token: AuthToken?): Outcome<Unit, DeviceError> =
+        storage { dao.updateAuthToken(address.value, token?.value) }.map { }
+
+    /** Kör ett anrop mot databasen och gör om fel till [DeviceError.StorageUnavailable]. Avbrott kastas vidare. */
+    private suspend fun <T> storage(block: suspend () -> T): Outcome<T, DeviceError> =
+        try {
+            Outcome.Success(block())
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Outcome.Failure(DeviceError.StorageUnavailable)
         }
 }
 

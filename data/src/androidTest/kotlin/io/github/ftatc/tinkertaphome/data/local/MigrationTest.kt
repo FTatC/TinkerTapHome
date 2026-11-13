@@ -7,6 +7,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -70,6 +71,21 @@ class MigrationTest {
                 }
         } finally {
             database.close()
+        }
+    }
+
+    @Test
+    fun existingDevicesHaveNoTokenAfterMigratingToVersion2() {
+        helper.createDatabase(TEST_DB, FIRST_VERSION).use { db ->
+            db.execSQL("INSERT INTO devices (id, address, name) VALUES (1, 'AA:BB:CC:DD:EE:01', 'Lampa')")
+        }
+
+        helper.runMigrationsAndValidate(TEST_DB, 2, true, *ALL_MIGRATIONS).use { db ->
+            db.query("SELECT name, auth_token FROM devices WHERE id = 1").use { cursor ->
+                cursor.moveToFirst()
+                assertEquals("Lampa", cursor.getString(0))
+                assertTrue(cursor.isNull(1))
+            }
         }
     }
 

@@ -29,6 +29,7 @@ class SaveDeviceUseCaseTest {
         saveDevice(testAddress(1), "  Lampa i köket \n")
 
         assertEquals(listOf(testAddress(1) to "Lampa i köket"), repository.saveCalls)
+        assertTrue(repository.tokens.isEmpty())
     }
 
     @Test
