@@ -51,6 +51,14 @@ internal class AndroidDeviceConnection @Inject constructor(
         value: ByteArray,
     ): Outcome<Unit, ConnectionError> = session(address).write(characteristic, value)
 
+    override suspend fun writeAndAwaitReply(
+        address: BleAddress,
+        characteristic: CharacteristicId,
+        value: ByteArray,
+        reply: CharacteristicId,
+        isReply: (ByteArray) -> Boolean,
+    ): Outcome<ByteArray, ConnectionError> = session(address).writeAndAwaitReply(characteristic, value, reply, isReply)
+
     override fun observeNotifications(
         address: BleAddress,
         characteristic: CharacteristicId,

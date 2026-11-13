@@ -118,6 +118,20 @@ class DeviceDetailContentTest {
     }
 
     @Test
+    fun aMissingPairingTellsTheUserToPairAgain() {
+        showDevice(ConnectionState.Failed(ConnectionError.PairingMissing))
+
+        composeRule.onNodeWithText(string(R.string.connection_error_pairing_missing)).assertIsDisplayed()
+    }
+
+    @Test
+    fun aMissingReplyIsShown() {
+        showDevice(ConnectionState.Failed(ConnectionError.NoReply))
+
+        composeRule.onNodeWithText(string(R.string.connection_error_no_reply)).assertIsDisplayed()
+    }
+
+    @Test
     fun anErrorFromStartingTheConnectionIsShown() {
         showDevice(ConnectionState.Disconnected, connectError = ConnectionError.BluetoothOff)
 

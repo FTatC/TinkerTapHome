@@ -10,6 +10,9 @@ internal sealed interface GattEvent {
 
     data class ServicesDiscovered(val status: Int) : GattEvent
 
+    /** Svaret på en begäran om MTU. [mtu] är det värde som gäller, och det kan vara lägre än det begärda. */
+    data class MtuChanged(val mtu: Int, val status: Int) : GattEvent
+
     /** Parkopplingen ändrades. Kommer från Android-systemet och inte från GATT-anslutningen. */
     data class BondChanged(val state: BondState) : GattEvent
 
@@ -26,5 +29,16 @@ internal sealed interface GattEvent {
 
 internal enum class BondState { NONE, BONDING, BONDED }
 
-/** Androids `BluetoothGatt.GATT_SUCCESS`. Kopierad hit så att logiken kan testas utan Android. */
+// Androids GATT-statuskoder. Kopierade hit så att logiken kan testas utan Android.
+
+/** `BluetoothGatt.GATT_SUCCESS`. */
 internal const val GATT_SUCCESS = 0
+
+/** `BluetoothGatt.GATT_INSUFFICIENT_AUTHENTICATION`: enheten kräver en parkoppling som saknas. */
+internal const val GATT_INSUFFICIENT_AUTHENTICATION = 5
+
+/** `BluetoothGatt.GATT_INSUFFICIENT_ENCRYPTION`: enheten kräver en krypterad länk som saknas. */
+internal const val GATT_INSUFFICIENT_ENCRYPTION = 15
+
+/** `GATT_ERROR` (133): ett vanligt, tillfälligt fel i Androids BLE-stack när en anslutning ska upprättas. */
+internal const val GATT_ERROR = 133

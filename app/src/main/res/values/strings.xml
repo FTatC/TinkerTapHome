@@ -51,6 +51,8 @@
     <string name="connection_error_lost">The connection was lost. The device may be out of range.</string>
     <string name="connection_error_connect_failed">Couldn\'t connect to the device (error %1$d).</string>
     <string name="connection_error_bond_failed">Pairing failed or was cancelled.</string>
+    <string name="connection_error_pairing_missing">The device no longer recognizes this phone. Remove the device in Android\'s Bluetooth settings and pair it again.</string>
+    <string name="connection_error_no_reply">The device didn\'t answer, so the connection was closed. Try connecting again.</string>
     <string name="connection_error_characteristic_not_found">The device doesn\'t support this function.</string>
     <string name="connection_error_rejected">Bluetooth is busy. Try again.</string>
     <string name="connection_error_operation_failed">The device reported an error (%1$d).</string>

@@ -49,6 +49,8 @@
     <string name="connection_error_lost">Anslutningen bröts. Enheten kan vara utom räckhåll.</string>
     <string name="connection_error_connect_failed">Det gick inte att ansluta till enheten (fel %1$d).</string>
     <string name="connection_error_bond_failed">Parkopplingen misslyckades eller avbröts.</string>
+    <string name="connection_error_pairing_missing">Enheten känner inte längre igen telefonen. Ta bort enheten i Androids Bluetooth-inställningar och parkoppla den igen.</string>
+    <string name="connection_error_no_reply">Enheten svarade inte, så anslutningen stängdes. Försök ansluta igen.</string>
     <string name="connection_error_characteristic_not_found">Enheten stöder inte den här funktionen.</string>
     <string name="connection_error_rejected">Bluetooth är upptaget. Försök igen.</string>
     <string name="connection_error_operation_failed">Enheten rapporterade ett fel (%1$d).</string>

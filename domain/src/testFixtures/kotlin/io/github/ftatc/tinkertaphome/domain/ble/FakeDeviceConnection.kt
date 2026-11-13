@@ -79,6 +79,14 @@ class FakeDeviceConnection : DeviceConnection {
         value: ByteArray,
     ): Outcome<Unit, ConnectionError> = Outcome.Failure(ConnectionError.NotConnected)
 
+    override suspend fun writeAndAwaitReply(
+        address: BleAddress,
+        characteristic: CharacteristicId,
+        value: ByteArray,
+        reply: CharacteristicId,
+        isReply: (ByteArray) -> Boolean,
+    ): Outcome<ByteArray, ConnectionError> = Outcome.Failure(ConnectionError.NotConnected)
+
     override fun observeNotifications(
         address: BleAddress,
         characteristic: CharacteristicId,
