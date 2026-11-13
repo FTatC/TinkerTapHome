@@ -1,6 +1,6 @@
 # Roadmap: nästa steg i implementationen av TinkerTapHome
 
-## Status (2026-11-09)
+## Status (2026-11-13)
 
 | Fas | Status | PR |
 |---|---|---|
@@ -17,7 +17,7 @@
 | 3 Skanningsskärm och navigation | ✅ Klar | #14, #25 |
 | 4 Spara en enhet | ✅ Klar | #15, #19 |
 | 5 Anslutning och GATT-kö | ✅ Klar | #27, #28 |
-| 6 Styrning via enhetsprotokollet | ⏳ Nästa. Specifikationen och besluten är klara. Fråga 1 och 6 verifieras på hårdvara under fasen. | – |
+| 6 Styrning via enhetsprotokollet | ⏳ Nästa. Besluten och planen är klara, steg 6.1–6.6 (se fas 6). Fråga 1 och 6 verifieras på hårdvara under fasen. | – |
 | 7 Senare | ⬜ Ej planerad i detalj | – |
 
 **Härdning utanför planen**, gjord mellan fas 4 och 5:
@@ -203,23 +203,38 @@ Ordningen är vald så att datamodellen är rättad innan BLE-koden börjar anv�
 
 ---
 
-## Fas 6: Styrning via enhetsprotokollet: `feature/device-control`
+## Fas 6: Styrning via enhetsprotokollet
 
-- ✅ **Protokollspecifikation:** `docs/ble-protocol.md` beskriver protokollversion 3 från firmwaren TinkerTapNode `0.4.0` (Arduino-repots `main`, commit `7632768`). Protokoll 3 kräver parkoppling, vilket stämmer med beslut 1.3.
-- ✅ **Öppna frågor:** fråga 2–5 och 7 i `docs/open-questions.md` är besvarade (2026-11-13). Fråga 1 (parkopplingen på hårdvaran) och 6 (ordningen mellan Result och skrivbekräftelsen) kräver test på en riktig nod och görs under fasen.
-- ✅ **Protokollversion** (fråga 4, beslut 2026-11-13): bara `proto` = `3` stöds. Andra versioner ger ett domänfel som skiljer på för gammal nod och för gammal app.
-- **`:domain`:** utgångstyperna kommer från Info: `Digital`, `Pwm` och `Servo`. Protokollet har inga sensorer. Use cases för att läsa utgångarna, autentisera och skicka kommandon, till exempel `ObserveOutputsUseCase`, `SetOutputUseCase` och `AllOffUseCase`. Fel från Result modelleras som en sealed typ.
-- **`:data`:** `ble/protocol/` med rena funktioner för kodning och avkodning. De testas bit för bit mot exempel ur specifikationen, och testerna fungerar som skydd för att protokollet inte ändras av misstag.
-- **Schemaändring** (fråga 2 och 3, beslut 2026-11-13): tokenet sparas per nod i en ny kolumn i `devices` som kan vara tom, utan kryptering. Det kräver databasversion 2, en migration i `ALL_MIGRATIONS`, schema-JSON för version 2 och ett migreringstest. Info behöver inte sparas, eftersom den läses vid varje anslutning.
-- **Token i spara-flödet** (fråga 2): tokenet anges när noden sparas, förifyllt med `tinker`, och noden sparas först när `AUTH` har lyckats. Efter `AUTH_FAILED` visar detaljvyn ett fält för nytt token. Appen försöker aldrig igen automatiskt.
-- **Krockar med fas 5-koden** (från firmwarens `docs/app-flow.md`, se "Jämfört med appen i dag" i `docs/ble-protocol.md`):
-  1. **Parkopplingsknappen** (fråga 7, beslut 2026-11-13): appen ber om knappen när noden sparas, och noden sparas först när parkopplingen har lyckats. `GattSession.connect()` parkopplar i dag direkt efter anslutningen och behöver delas upp i parkoppling vid sparande och vanlig anslutning, som ger ett fel om parkopplingen saknas. Skanningen behöver känna igen TinkerTapNode på service-UUID:t. Instruktionen om knappen är en text, utan bild.
-  2. **Tiden för AUTH (`ato`, 10 s):** Info, CCCD för Result och State, läsning av State och `AUTH` måste köras automatiskt direkt efter `connect()`. I dag ansluter detaljskärmen utan att göra något, och noden kopplar ner efter 10 s. Timeouten per operation (`OPERATION_TIMEOUT`, 10 s) behöver ses över.
-  3. **`autoConnect = true` i förgrunden** (fråga 5, beslut 2026-11-13): sparade noder ansluts med `autoConnect = true` medan appen syns, och alla noder kopplas ner när appen går till bakgrunden. `CONNECT_TIMEOUT` på 15 s passar inte med det. Det behövs ett tillstånd för att vänta på noden i stället för en timeout.
-  4. **Vänta på Result uttryckligen** efter varje skrivning, matchat på opcode och `deviceId`, eftersom `write()` kan returnera innan notifieringen har behandlats.
-  5. **GATT-status `5` och `15`** vid skrivning ska bli ett eget domänfel, "noden har glömt telefonen", i stället för `OperationFailed(status)`. Appen visar då en infotext om att ta bort noden i Bluetooth-inställningarna och parkoppla igen (fråga 7). Hur en sparad nod parkopplas igen är inte bestämt än.
-- **Mer som saknas:** omförsök vid status `133`, `requestMtu(247)` (beslut 2026-11-13, fråga 5) och att TinkerTapNode känns igen på service-UUID:t vid skanning.
-- ✅ **Tolkning av Info-JSON** (beslut 2026-11-13): `kotlinx-serialization-json` används. Den har samma version som `kotlinx-serialization-core` (`kotlinxSerialization` i `libs.versions.toml`). Den läggs till i `:data` tillsammans med pluginet `kotlin-serialization` när fas 6 påbörjas, och `gradle/verification-metadata.xml` uppdateras i samma ändring. Tolkningen använder `ignoreUnknownKeys = true`, eftersom firmwaren lägger till fält utan att höja `proto`. Den testas med JVM-enhetstester mot exemplen i `docs/ble-protocol.md`.
+Underlag: `docs/ble-protocol.md` (protokollversion 3, firmware TinkerTapNode `0.4.0`, Arduino-repots `main`, commit `7632768`) och `docs/open-questions.md`. Krockarna med fas 5-koden kommer från firmwarens `docs/app-flow.md`, se "Jämfört med appen i dag" i `docs/ble-protocol.md`.
+
+### Beslut
+
+- ✅ **Bara TinkerTapNode** (beslut 2026-11-13): i fas 6 går det bara att spara noder som annonserar TinkerTapNodes service-UUID `7d3c0000-…`. Andra BLE-enheter visas i skanningen men kan inte sparas. Alla sparade enheter är därmed noder, så databasen behöver ingen kolumn för enhetstyp. Stöd för andra enhetstyper får vänta till en senare fas.
+- ✅ **Protokollversion** (fråga 4): bara `proto` = `3` stöds. Andra versioner ger ett domänfel som skiljer på för gammal nod och för gammal app.
+- ✅ **Parkoppling** (fråga 7): appen ber om nodens knapp när noden sparas, med en text och utan bild. Noden sparas först när parkopplingen har lyckats. Senare anslutningar parkopplar inte. Har noden glömt telefonen, vilket syns som GATT-status `5` eller `15`, visar appen en infotext om att ta bort noden i Bluetooth-inställningarna och parkoppla igen.
+- ✅ **Token** (fråga 2 och 3): tokenet anges när noden sparas, förifyllt med `tinker`, och noden sparas först när `AUTH` har lyckats. Det sparas per nod i Room utan kryptering. Efter `AUTH_FAILED` försöker appen inte igen automatiskt. Detaljvyn ber om ett nytt token.
+- ✅ **Anslutning** (fråga 5): sparade noder ansluts med `autoConnect = true` medan appen syns, och alla noder kopplas ner när appen går till bakgrunden. Appen begär `requestMtu(247)`.
+- ✅ **Info-JSON:** tolkas med `kotlinx-serialization-json` (samma version som `kotlinx-serialization-core`) och `ignoreUnknownKeys = true`. Biblioteket och pluginet `kotlin-serialization` läggs till i `:data` i steg 6.1, och `gradle/verification-metadata.xml` uppdateras i samma ändring.
+- 🔶 **Bestäms under arbetet:** hur en sparad nod parkopplas igen (spara-flödet ger `AlreadySaved`), och hur länge appen väntar på Result efter en skrivning.
+- 🔶 **Verifieras på hårdvara under fasen:** fråga 1 (parkopplingen med Android 16) och fråga 6 (ordningen mellan Result och skrivbekräftelsen).
+
+### Steg
+
+Varje steg är en egen branch och en egen PR, i den här ordningen (beslut 2026-11-13).
+
+| Steg | Branch | Innehåll | Tester |
+|---|---|---|---|
+| 6.1 | `feature/node-protocol` | **Protokollagret.** `:data/ble/protocol/`: kodning av Command, avkodning av Result och State, tolkning av Info. `:domain`: utgångstyperna `Digital`, `Pwm` och `Servo`, Info som domänmodell, fel från Result och protokollversion som sealed typer. | JVM-tester mot exemplen i `docs/ble-protocol.md`, bit för bit. De skyddar mot att protokollet ändras av misstag. |
+| 6.2 | `fix/gatt-node-errors` | **Fixar i GATT-lagret.** Status `5` och `15` blir ett eget `ConnectionError` för "noden har glömt telefonen". Omförsök efter 1–2 s vid status `133`. `requestMtu(247)` före `discoverServices()`, där ett lägre värde inte är ett fel. Ett sätt att skriva och vänta på ett matchande Result, eftersom `write()` kan returnera innan notifieringen har behandlats. | JVM-tester för `GattSession` med fake `GattHandle`. |
+| 6.3 | `feature/node-connection` | **Anslutningen delas upp.** `GattSession.connect()` delas i parkoppling, som används när noden sparas, och vanlig anslutning, som ger ett fel om parkopplingen saknas. `autoConnect = true` för sparade noder med ett nytt tillstånd för att vänta på noden i stället för `CONNECT_TIMEOUT`. Gränssnittet signalerar förgrund och bakgrund med `LifecycleStartEffect`, och appen kopplar ner alla noder i bakgrunden. **Ändrar fas 5-koden**: planen för uppdelningen beskrivs i PR:en innan den görs. | JVM-tester för `GattSession` och ViewModel. Manuellt på telefon. |
+| 6.4 | `feature/device-token-column` | **Databasversion 2.** En kolumn för token i `devices` som kan vara tom, en migration i `ALL_MIGRATIONS`, schema-JSON för version 2 och `DeviceRepository` med token. | `MigrationTest` och DAO-tester med `connectedAndroidTest`. |
+| 6.5 | `feature/save-node` | **Spara-flödet.** Skanningen läser service-UUID:t och markerar TinkerTapNode, och bara de kan sparas. Flödet: text om knappen, parkoppling, Info med kontroll av `proto`, `AUTH` med tokenet och sedan sparas noden med token. | JVM-tester för use case och ViewModel, Compose-tester för dialogen, manuellt på telefon. |
+| 6.6 | `feature/device-control` | **Styrning.** En session efter anslutningen som inom `ato` läser Info, slår på Result och State, läser State och skickar `AUTH`. `ObserveOutputsUseCase`, `SetOutputUseCase` och `AllOffUseCase`. Detaljvyn visar utgångarna från State, `ALL_OFF`, fel och fält för nytt token. `PING` om `hb` > 0. | JVM-tester för use cases och ViewModel, Compose-tester, manuellt mot en riktig nod. Här verifieras fråga 1 och 6. |
+
+### Förberedelser
+
+- **Noden** flashas med firmware från Arduino-repots `main` (`7632768` eller senare), byggd med `--library lib/ArduinoBLE`. Det behövs från steg 6.3.
+- **Telefonen:** `ContextPermissionStatusTest.reportsAGrantedPermissionAsGranted` fallerar på ColorOS, eftersom systemet hindrar testet från att ge behörigheter. Slå på "Disable permission monitoring" i Utvecklaralternativ innan steg 6.4, där `connectedAndroidTest` måste passera för migreringstestet.
 
 ---
 
