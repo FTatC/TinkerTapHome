@@ -10,7 +10,7 @@ Beslut som agenten inte får ta själv (se CLAUDE.md). Varje fråga har ett svar
 | 4 | [Vilka protokollversioner appen stöder](#4-vilka-protokollversioner-appen-stöder) | Fas 6 | ✅ Besvarad 2026-11-13 |
 | 5 | [`autoConnect` och en anslutning åt gången](#5-autoconnect-och-en-anslutning-åt-gången) | Fas 5 (uppföljning), fas 6 | ✅ Besvarad 2026-11-13 |
 | 6 | [Ordningen mellan Result och skrivbekräftelsen](#6-ordningen-mellan-result-och-skrivbekräftelsen) | Fas 6 | 🔶 Öppen, kräver test på enhet |
-| 7 | [Parkopplingsknappen och glömda parkopplingar i appen](#7-parkopplingsknappen-och-glömda-parkopplingar-i-appen) | Fas 6 | 🔶 Öppen |
+| 7 | [Parkopplingsknappen och glömda parkopplingar i appen](#7-parkopplingsknappen-och-glömda-parkopplingar-i-appen) | Fas 6 | ✅ Besvarad 2026-11-13 |
 
 ---
 
@@ -104,4 +104,21 @@ Firmware `0.1.0` saknar både `proto` och Result. Protokoll 3 är mergat till Ar
 - Hur ska appen upptäcka att noden har glömt telefonen? Till exempel genom att krypteringen eller skrivningen misslyckas fast `getBondState()` är `BOND_BONDED`. Och vad ska den visa? Appen kan inte ta bort en bond själv med publika API:er, så användaren måste göra det i Bluetooth-inställningarna.
 - Räcker 4 telefoner per nod för hushållet?
 
-**Svar:** –
+**Svar (2026-11-13):**
+
+**När knappen efterfrågas:** Appen ber användaren trycka på knappen **när noden sparas**.
+- Parkopplingen blir en del av att spara en nod. Användaren trycker på knappen, appen ansluter och parkopplar, och noden sparas när parkopplingen har lyckats. Misslyckas parkopplingen sparas noden inte, och användaren kan försöka igen.
+- Senare anslutningar parkopplar inte. Är telefonen inte parkopplad med en sparad nod, eller har noden glömt den, visar appen ett fel i stället för att starta en parkoppling som ändå misslyckas utan knappen.
+- Steget visas bara för noder som annonserar TinkerTapNodes service-UUID. Skanningen behöver därför läsa UUID:t i reklampaketet, vilket den inte gör i dag.
+
+**Följder för koden:**
+- Spara-flödet från fas 4 (`SaveDeviceViewModel` och `SaveDeviceUseCase`) får ett steg för knappen och parkopplingen före själva sparandet.
+- `GattSession.connect()` parkopplar i dag alltid om enheten inte är parkopplad. Det behöver delas upp: parkoppling när noden sparas, och vanlig anslutning, som ger ett fel om parkopplingen saknas.
+
+**Instruktionen:** En text räcker. Den säger att användaren ska trycka på nodens parkopplingsknapp och att det finns 30 s på sig. Ingen bild av knappen eller matrisen behövs. Texten läggs i `strings.xml` på engelska och svenska.
+
+**När noden har glömt telefonen:** Appen visar en infotext. Den förklarar att noden inte längre känner igen telefonen och att användaren måste ta bort noden i Androids Bluetooth-inställningar och sedan parkoppla igen. Appen upptäcker läget genom att en skrivning till Command får GATT-status `5` eller `15` fast telefonen är parkopplad, eftersom appen inte kan ta bort parkopplingen själv.
+
+**Antal telefoner:** 4 telefoner per nod räcker. Firmwaren behöver inte ändras.
+
+**Inte bestämt än:** Hur användaren startar en ny parkoppling för en nod som redan är sparad. Spara-flödet godtar inte en adress som redan finns, eftersom den ger `SaveDeviceError.AlreadySaved`. Det tas ställning till när fas 6 implementeras, till exempel med en knapp för att parkoppla igen i detaljvyn.
