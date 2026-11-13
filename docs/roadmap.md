@@ -17,7 +17,7 @@
 | 3 Skanningsskärm och navigation | ✅ Klar | #14, #25 |
 | 4 Spara en enhet | ✅ Klar | #15, #19 |
 | 5 Anslutning och GATT-kö | ✅ Klar | #27, #28 |
-| 6 Styrning via enhetsprotokollet | ⏳ Nästa. Specifikationen är klar, väntar på svar på öppna frågor 🔶 | – |
+| 6 Styrning via enhetsprotokollet | ⏳ Nästa. Specifikationen och besluten är klara. Fråga 1 och 6 verifieras på hårdvara under fasen. | – |
 | 7 Senare | ⬜ Ej planerad i detalj | – |
 
 **Härdning utanför planen**, gjord mellan fas 4 och 5:
@@ -206,11 +206,12 @@ Ordningen är vald så att datamodellen är rättad innan BLE-koden börjar anv�
 ## Fas 6: Styrning via enhetsprotokollet: `feature/device-control`
 
 - ✅ **Protokollspecifikation:** `docs/ble-protocol.md` beskriver protokollversion 3 från firmwaren TinkerTapNode `0.4.0` (Arduino-repots `main`, commit `7632768`). Protokoll 3 kräver parkoppling, vilket stämmer med beslut 1.3.
-- 🔶 **Öppna frågor innan arbetet börjar:** parkoppling, token, vilka protokollversioner appen stöder med mera. De finns i `docs/open-questions.md`.
+- ✅ **Öppna frågor:** fråga 2–5 och 7 i `docs/open-questions.md` är besvarade (2026-11-13). Fråga 1 (parkopplingen på hårdvaran) och 6 (ordningen mellan Result och skrivbekräftelsen) kräver test på en riktig nod och görs under fasen.
 - ✅ **Protokollversion** (fråga 4, beslut 2026-11-13): bara `proto` = `3` stöds. Andra versioner ger ett domänfel som skiljer på för gammal nod och för gammal app.
 - **`:domain`:** utgångstyperna kommer från Info: `Digital`, `Pwm` och `Servo`. Protokollet har inga sensorer. Use cases för att läsa utgångarna, autentisera och skicka kommandon, till exempel `ObserveOutputsUseCase`, `SetOutputUseCase` och `AllOffUseCase`. Fel från Result modelleras som en sealed typ.
 - **`:data`:** `ble/protocol/` med rena funktioner för kodning och avkodning. De testas bit för bit mot exempel ur specifikationen, och testerna fungerar som skydd för att protokollet inte ändras av misstag.
-- **Schemaändring?** Om token ska sparas per nod (fråga 2): databasversion 2, en migration i `ALL_MIGRATIONS`, schema-JSON för version 2 och ett migreringstest. Info behöver inte sparas, eftersom den läses vid varje anslutning.
+- **Schemaändring** (fråga 2 och 3, beslut 2026-11-13): tokenet sparas per nod i en ny kolumn i `devices` som kan vara tom, utan kryptering. Det kräver databasversion 2, en migration i `ALL_MIGRATIONS`, schema-JSON för version 2 och ett migreringstest. Info behöver inte sparas, eftersom den läses vid varje anslutning.
+- **Token i spara-flödet** (fråga 2): tokenet anges när noden sparas, förifyllt med `tinker`, och noden sparas först när `AUTH` har lyckats. Efter `AUTH_FAILED` visar detaljvyn ett fält för nytt token. Appen försöker aldrig igen automatiskt.
 - **Krockar med fas 5-koden** (från firmwarens `docs/app-flow.md`, se "Jämfört med appen i dag" i `docs/ble-protocol.md`):
   1. **Parkopplingsknappen** (fråga 7, beslut 2026-11-13): appen ber om knappen när noden sparas, och noden sparas först när parkopplingen har lyckats. `GattSession.connect()` parkopplar i dag direkt efter anslutningen och behöver delas upp i parkoppling vid sparande och vanlig anslutning, som ger ett fel om parkopplingen saknas. Skanningen behöver känna igen TinkerTapNode på service-UUID:t. Instruktionen om knappen är en text, utan bild.
   2. **Tiden för AUTH (`ato`, 10 s):** Info, CCCD för Result och State, läsning av State och `AUTH` måste köras automatiskt direkt efter `connect()`. I dag ansluter detaljskärmen utan att göra något, och noden kopplar ner efter 10 s. Timeouten per operation (`OPERATION_TIMEOUT`, 10 s) behöver ses över.

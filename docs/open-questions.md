@@ -5,8 +5,8 @@ Beslut som agenten inte får ta själv (se CLAUDE.md). Varje fråga har ett svar
 | # | Fråga | Gäller | Status |
 |---|---|---|---|
 | 1 | [Parkoppling och identitet](#1-parkoppling-och-identitet) | Fas 6, beslut 1.3 | 🔶 Öppen |
-| 2 | [Var tokenet kommer ifrån och var det sparas](#2-var-tokenet-kommer-ifrån-och-var-det-sparas) | Fas 6, databasschema | 🔶 Öppen |
-| 3 | [Token i telefonen](#3-token-i-telefonen) | Fas 6 | 🔶 Öppen |
+| 2 | [Var tokenet kommer ifrån och var det sparas](#2-var-tokenet-kommer-ifrån-och-var-det-sparas) | Fas 6, databasschema | ✅ Besvarad 2026-11-13 |
+| 3 | [Token i telefonen](#3-token-i-telefonen) | Fas 6 | ✅ Besvarad 2026-11-13 |
 | 4 | [Vilka protokollversioner appen stöder](#4-vilka-protokollversioner-appen-stöder) | Fas 6 | ✅ Besvarad 2026-11-13 |
 | 5 | [`autoConnect` och en anslutning åt gången](#5-autoconnect-och-en-anslutning-åt-gången) | Fas 5 (uppföljning), fas 6 | ✅ Besvarad 2026-11-13 |
 | 6 | [Ordningen mellan Result och skrivbekräftelsen](#6-ordningen-mellan-result-och-skrivbekräftelsen) | Fas 6 | 🔶 Öppen, kräver test på enhet |
@@ -35,7 +35,11 @@ Beslut som agenten inte får ta själv (se CLAUDE.md). Varje fråga har ett svar
 - Ska tokenet sparas per nod? Då behövs en ny kolumn i `devices`, alltså databasversion 2 med migration och migreringstest.
 - Hur ska appen bete sig efter `AUTH_FAILED`? Förslag: visa ett fel och be om ett nytt token.
 
-**Svar:** –
+**Svar (2026-11-13):**
+- **När:** Tokenet anges när noden sparas, i samma steg som parkopplingen (fråga 7). Flödet blir: användaren trycker på knappen, appen parkopplar, läser Info och skickar `AUTH` med tokenet. Noden sparas först när Result är `20 FF 00`. Fältet för token visas bara om `auth` = `1`.
+- **Förval:** Fältet är förifyllt med firmwarens standardtoken `tinker`.
+- **Lagring:** Tokenet sparas per nod, i en ny kolumn i `devices` som kan vara tom. Det kräver databasversion 2, en migration i `ALL_MIGRATIONS`, schema-JSON för version 2 och ett migreringstest.
+- **Efter `AUTH_FAILED`:** Appen försöker inte igen automatiskt. Detaljvyn visar ett fel och ett fält för nytt token. Det nya tokenet sparas först när en ny `AUTH` har lyckats. Vyn kan delas med den för att parkoppla igen, som ännu inte är bestämd (fråga 7).
 
 ## 3. Token i telefonen
 
@@ -43,7 +47,11 @@ Beslut som agenten inte får ta själv (se CLAUDE.md). Varje fråga har ett svar
 
 **Fråga:** Ska tokenet lagras krypterat, till exempel med Android Keystore, eller räcker det i Room eller DataStore? Ett nytt bibliotek, som `androidx.security:security-crypto`, kräver godkännande.
 
-**Svar:** –
+**Svar (2026-11-13):** Tokenet sparas i **Room, utan kryptering**.
+- Hotet är litet. Den som vill använda tokenet måste också vara parkopplad med noden, och det kräver att man trycker på nodens knapp. Över luften skickas tokenet krypterat i protokoll 3.
+- Databasen ligger i appens privata lagring, och appen har redan `allowBackup="false"` och `dataExtractionRules`, så den kommer inte med i backuper eller överföringar till en ny telefon.
+- Kryptering med Android Keystore skulle bara skydda mot den som redan har root-åtkomst, och om nyckeln försvinner måste alla token anges igen. `androidx.security:security-crypto` är dessutom utfasat. Behövs kryptering senare görs den med Android Keystore och `javax.crypto` direkt, utan nytt bibliotek.
+- Tokenet loggas aldrig och visas inte i klartext efter att det har sparats. Fältet använder `PasswordVisualTransformation`.
 
 ## 4. Vilka protokollversioner appen stöder
 
