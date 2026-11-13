@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
     alias(libs.plugins.room)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -23,6 +24,9 @@ dependencies {
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)
     ksp(libs.room.compiler)
+
+    // Tolkning av Info-JSON från TinkerTapNode (beslut i docs/roadmap.md, fas 6).
+    implementation(libs.kotlinx.serialization.json)
 
     testImplementation(testFixtures(project(":domain")))
 
