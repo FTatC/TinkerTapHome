@@ -199,7 +199,7 @@ Ordningen är vald så att datamodellen är rättad innan BLE-koden börjar anv�
 
   Allt testas med fake `GattHandle` och `StandardTestDispatcher`.
 - **UI:** visa anslutningsstatus på varje rad i `DeviceListScreen` och lägg till en detaljskärm `ui/device/`.
-- **Uppföljning efter protokollspecifikationen** (fråga 5 i `docs/open-questions.md`): firmwaren rekommenderar `autoConnect = true` för kända noder och `requestMtu(247)`. `AndroidGattConnector` använder i dag `autoConnect = false` och begär ingen MTU. Write With Response och en GATT-operation i taget stämmer redan.
+- **Uppföljning efter protokollspecifikationen** (fråga 5 i `docs/open-questions.md`): firmwaren rekommenderar `autoConnect = true` för kända noder och `requestMtu(247)`. `AndroidGattConnector` använder i dag `autoConnect = false` och begär ingen MTU. Write With Response och en GATT-operation i taget stämmer redan. Beslutet om `autoConnect` (2026-11-13) genomförs i fas 6.
 
 ---
 
@@ -213,10 +213,10 @@ Ordningen är vald så att datamodellen är rättad innan BLE-koden börjar anv�
 - **Krockar med fas 5-koden** (från firmwarens `docs/app-flow.md`, se "Jämfört med appen i dag" i `docs/ble-protocol.md`):
   1. **Parkopplingsknappen:** `GattSession.connect()` parkopplar direkt efter anslutningen. För en nod som inte är parkopplad måste appen be användaren trycka på knappen **innan** `connect()` anropas, annars blir resultatet bara `BondFailed`.
   2. **Tiden för AUTH (`ato`, 10 s):** Info, CCCD för Result och State, läsning av State och `AUTH` måste köras automatiskt direkt efter `connect()`. I dag ansluter detaljskärmen utan att göra något, och noden kopplar ner efter 10 s. Timeouten per operation (`OPERATION_TIMEOUT`, 10 s) behöver ses över.
-  3. **`autoConnect = true`** (fråga 5) passar inte med `CONNECT_TIMEOUT` på 15 s. Det behövs ett tillstånd för att vänta på noden i stället för en timeout.
+  3. **`autoConnect = true` i förgrunden** (fråga 5, beslut 2026-11-13): sparade noder ansluts med `autoConnect = true` medan appen syns, och alla noder kopplas ner när appen går till bakgrunden. `CONNECT_TIMEOUT` på 15 s passar inte med det. Det behövs ett tillstånd för att vänta på noden i stället för en timeout.
   4. **Vänta på Result uttryckligen** efter varje skrivning, matchat på opcode och `deviceId`, eftersom `write()` kan returnera innan notifieringen har behandlats.
   5. **GATT-status `5` och `15`** vid skrivning ska bli ett eget domänfel, "noden har glömt telefonen", i stället för `OperationFailed(status)`.
-- **Mer som saknas:** omförsök vid status `133`, `requestMtu(247)` och att TinkerTapNode känns igen på service-UUID:t vid skanning.
+- **Mer som saknas:** omförsök vid status `133`, `requestMtu(247)` (beslut 2026-11-13, fråga 5) och att TinkerTapNode känns igen på service-UUID:t vid skanning.
 - ✅ **Tolkning av Info-JSON** (beslut 2026-11-13): `kotlinx-serialization-json` används. Den har samma version som `kotlinx-serialization-core` (`kotlinxSerialization` i `libs.versions.toml`). Den läggs till i `:data` tillsammans med pluginet `kotlin-serialization` när fas 6 påbörjas, och `gradle/verification-metadata.xml` uppdateras i samma ändring. Tolkningen använder `ignoreUnknownKeys = true`, eftersom firmwaren lägger till fält utan att höja `proto`. Den testas med JVM-enhetstester mot exemplen i `docs/ble-protocol.md`.
 
 ---
@@ -225,7 +225,7 @@ Ordningen är vald så att datamodellen är rättad innan BLE-koden börjar anv�
 - **CI:** `.github/workflows/ci.yml` som kör `test`, `lint` och `assemble*` på varje PR, kanske också `connectedAndroidTest` på en emulator (🔶 tredjeparts-Action), samt branch protection på `main`.
 - **Rum och scener:** nya Room-tabeller, var och en med en migration.
 - **Inställningar:** DataStore, till exempel för skanningens längd och tema.
-- **Anslutningar i bakgrunden:** en foreground service. 🔶 Kräver manifestbehörigheten `FOREGROUND_SERVICE_CONNECTED_DEVICE`.
+- **Anslutningar i bakgrunden:** en foreground service. 🔶 Kräver manifestbehörigheten `FOREGROUND_SERVICE_CONNECTED_DEVICE`. Fram till dess kopplar appen ner när den går till bakgrunden (fråga 5).
 - 🔶 **Arkitekturtest:** Konsist, ett nytt beroende, för att automatiskt upptäcka nya `public`-klasser i `:data`.
 
 ---
