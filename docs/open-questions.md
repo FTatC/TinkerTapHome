@@ -10,17 +10,19 @@ Beslut som agenten inte får ta själv (se CLAUDE.md). Varje fråga har ett svar
 | 4 | [Vilka protokollversioner appen stöder](#4-vilka-protokollversioner-appen-stöder) | Fas 6 | 🔶 Öppen |
 | 5 | [`autoConnect` och en anslutning åt gången](#5-autoconnect-och-en-anslutning-åt-gången) | Fas 5 (uppföljning), fas 7 | 🔶 Öppen |
 | 6 | [Ordningen mellan Result och skrivbekräftelsen](#6-ordningen-mellan-result-och-skrivbekräftelsen) | Fas 6 | 🔶 Öppen, kräver test på enhet |
+| 7 | [Parkopplingsknappen och glömda parkopplingar i appen](#7-parkopplingsknappen-och-glömda-parkopplingar-i-appen) | Fas 6 | 🔶 Öppen |
 
 ---
 
 ## 1. Parkoppling och identitet
 
-**Bakgrund:** Enligt beslut 1.3 i roadmappen (2026-11-01) ska noderna bondas så att BLE-adressen blir en stabil identitet. Firmwaren TinkerTapNode (protokoll 2) kräver ingen parkoppling, och bondning är inte verifierad mot UNO R4 WiFi (ArduinoBLE). Namnsuffixet `TinkerTapNode-XXXX` bygger på samma adress.
+**Bakgrund:** Enligt beslut 1.3 i roadmappen (2026-11-01) ska noderna bondas så att BLE-adressen blir en stabil identitet. Firmware `0.4.0` (protokoll 3, branchen `feature/ble-pairing`) **kräver** nu parkoppling. Command kräver krypterad länk, och nya parkopplingar godtas bara under ett fönster på 30 s som öppnas med en knapp på noden. Tiden för AUTH står still medan fönstret är öppet, så dialogen hinner inte äta upp de 10 sekunderna. Namnsuffixet `TinkerTapNode-XXXX` bygger på nodens adress.
 
-**Frågor:**
-- Fungerar `createBond()` mot noden?
-- Om inte: är adressen ändå stabil, till exempel för att den är en fast publik adress? Räcker det då att använda adressen som identitet utan bondning?
-- Om parkopplingen visar en dialog kan den ta upp en stor del av de 10 sekunder (`ato`) som noden ger för AUTH. Ska bondning i så fall göras i en separat anslutning innan den vanliga?
+**Kvar att reda ut:**
+- Fungerar parkopplingen på kortet? Arduino-repot har testsketchen `tests/PairingTest` med en testgång för nRF Connect. Den har inte rapporterats som körd.
+- Är nodens egen adress stabil, alltså fast och publik, efter omstart och omflashning? Adressen är fortfarande appens identitet för noden.
+- Fungerar flödet med *Insufficient Encryption* och Androids automatiska parkoppling och omsändning mot ArduinoBLE? Eller ska appen alltid anropa `createBond()` uttryckligen innan första skrivningen?
+- När branchen är mergad i Arduino-repot: stämmer dokumentet fortfarande?
 
 **Svar:** –
 
@@ -38,7 +40,7 @@ Beslut som agenten inte får ta själv (se CLAUDE.md). Varje fråga har ett svar
 
 ## 3. Token i telefonen
 
-**Bakgrund:** Tokenet skickas i klartext över BLE, så krypterad lagring skyddar bara mot den som kommer åt telefonens filer.
+**Bakgrund:** Med protokoll 3 skickas tokenet över en krypterad länk och kan inte avlyssnas. Den svagaste länken blir då hur tokenet lagras på telefonen. Samtidigt kräver noden redan parkoppling, som bara kan göras fysiskt vid noden, så tokenet är ett andra skydd ovanpå den.
 
 **Fråga:** Ska tokenet lagras krypterat, till exempel med Android Keystore, eller räcker det i Room eller DataStore? Ett nytt bibliotek, som `androidx.security:security-crypto`, kräver godkännande.
 
@@ -46,9 +48,17 @@ Beslut som agenten inte får ta själv (se CLAUDE.md). Varje fråga har ett svar
 
 ## 4. Vilka protokollversioner appen stöder
 
-**Bakgrund:** Info innehåller `proto`. Protokoll 2 skiljer sig från 1 på flera punkter: tid för AUTH, nedkoppling vid fel token och att `ALL_OFF` kräver AUTH. Firmware `0.1.0` saknar både `proto` och Result.
+**Bakgrund:** Info innehåller `proto`. Versionerna skiljer sig så här:
 
-**Fråga:** Ska appen bara stödja `proto` = `2` och visa ett tydligt fel för andra versioner, så att äldre noder måste uppdateras? Det är förslaget.
+| Version | Skillnad mot versionen före |
+|---|---|
+| 1 | – |
+| 2 | Tid för AUTH, nedkoppling vid fel token och att `ALL_OFF` kräver AUTH |
+| 3 | Parkoppling och krypterad länk för Command |
+
+Firmware `0.1.0` saknar både `proto` och Result. På Arduino-repots `main` finns i dag protokoll 2, och protokoll 3 finns bara på `feature/ble-pairing`.
+
+**Fråga:** Ska appen bara stödja `proto` = `3` och visa ett tydligt fel för andra versioner, så att äldre noder måste uppdateras? Det är förslaget. Alternativet är att också stödja `2` tills alla noder är uppdaterade. Skillnaden för appen är i princip om parkoppling krävs, och det står i fältet `pair`.
 
 **Svar:** –
 
@@ -68,5 +78,17 @@ Beslut som agenten inte får ta själv (se CLAUDE.md). Varje fråga har ett svar
 **Bakgrund:** Protokollet saknar sekvensnummer. Firmwaren förlitar sig på att ArduinoBLE skickar Result-notifieringen innan skrivningen bekräftas, så att `onCharacteristicChanged` kommer före `onCharacteristicWrite` i appen.
 
 **Fråga:** Stämmer det på en riktig enhet? Det kan provas med nRF Connect eller med appen när fas 6 är på plats. Om det inte stämmer behöver appen vänta på Result separat, eller så behöver firmwaren ett sekvensnummer i en ny protokollversion.
+
+**Svar:** –
+
+## 7. Parkopplingsknappen och glömda parkopplingar i appen
+
+**Bakgrund:** Med protokoll 3 måste användaren trycka på nodens parkopplingsknapp innan telefonen kan parkopplas, och fönstret är öppet i 30 s. Noden sparar högst 4 telefoner och ersätter den äldsta utan att säga något. Alla parkopplingar kan också raderas med knappen vid uppstart. Android tror då fortfarande att telefonen är parkopplad, men krypteringen misslyckas.
+
+**Frågor:**
+- När ska appen be användaren trycka på knappen? När noden sparas första gången, eller först när den första skrivningen kräver det?
+- Räcker en text, eller behövs en bild av knappen och matrisens symboler?
+- Hur ska appen upptäcka att noden har glömt telefonen? Till exempel genom att krypteringen eller skrivningen misslyckas fast `getBondState()` är `BOND_BONDED`. Och vad ska den visa? Appen kan inte ta bort en bond själv med publika API:er, så användaren måste göra det i Bluetooth-inställningarna.
+- Räcker 4 telefoner per nod för hushållet?
 
 **Svar:** –
