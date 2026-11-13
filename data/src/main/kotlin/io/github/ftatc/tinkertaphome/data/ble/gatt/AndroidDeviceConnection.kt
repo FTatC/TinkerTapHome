@@ -30,10 +30,23 @@ internal class AndroidDeviceConnection @Inject constructor(
 
     override fun observeState(address: BleAddress): StateFlow<ConnectionState> = session(address).state
 
-    override suspend fun connect(address: BleAddress): Outcome<Unit, ConnectionError> = when {
-        !permissions.isGranted() -> Outcome.Failure(ConnectionError.PermissionMissing)
-        !connector.isBluetoothEnabled() -> Outcome.Failure(ConnectionError.BluetoothOff)
-        else -> session(address).connect()
+    override suspend fun pair(address: BleAddress): Outcome<Unit, ConnectionError> =
+        whenAvailable(address) { it.pair() }
+
+    override suspend fun connect(address: BleAddress): Outcome<Unit, ConnectionError> =
+        whenAvailable(address) { it.connect() }
+
+    /** Kör [open] om behörigheten finns och Bluetooth är på. Annars syns felet i enhetens status. */
+    private suspend fun whenAvailable(
+        address: BleAddress,
+        open: suspend (GattSession) -> Outcome<Unit, ConnectionError>,
+    ): Outcome<Unit, ConnectionError> {
+        val session = session(address)
+        return when {
+            !permissions.isGranted() -> session.reportUnavailable(ConnectionError.PermissionMissing)
+            !connector.isBluetoothEnabled() -> session.reportUnavailable(ConnectionError.BluetoothOff)
+            else -> open(session)
+        }
     }
 
     override fun disconnect(address: BleAddress) {

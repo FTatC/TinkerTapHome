@@ -31,24 +31,30 @@ internal class AndroidGattConnector @Inject constructor(
 
     override fun isBluetoothEnabled(): Boolean = adapter?.isEnabled == true
 
-    override fun connect(address: String, onEvent: (GattEvent) -> Unit): GattConnectStart {
+    override fun isBonded(address: String): Boolean = try {
+        adapter?.getRemoteDevice(address)?.bondState == BluetoothDevice.BOND_BONDED
+    } catch (_: SecurityException) {
+        false
+    }
+
+    override fun connect(address: String, autoConnect: Boolean, onEvent: (GattEvent) -> Unit): GattConnectStart {
         val enabledAdapter = adapter?.takeIf { it.isEnabled } ?: return GattConnectStart.BluetoothOff
         val bondReceiver = BondStateReceiver(address, onEvent)
         // EXPORTED krävs: meddelandet skickas av Bluetooth-processen, som räknas som en annan app.
         // Med NOT_EXPORTED kommer det aldrig fram (verifierat på enhet). Det är säkert, eftersom
         // ACTION_BOND_STATE_CHANGED är ett skyddat systemmeddelande som andra appar inte kan skicka.
         context.registerReceiver(bondReceiver, IntentFilter(BluetoothDevice.ACTION_BOND_STATE_CHANGED), Context.RECEIVER_EXPORTED)
-        val started = startGatt(enabledAdapter, address, onEvent)
+        val started = startGatt(enabledAdapter, address, autoConnect, onEvent)
         return when (started) {
             is GattStart.Connected -> GattConnectStart.Started(AndroidGattHandle(context, started.gatt, bondReceiver))
             is GattStart.Refused -> started.reason.also { context.unregisterReceiver(bondReceiver) }
         }
     }
 
-    private fun startGatt(adapter: BluetoothAdapter, address: String, onEvent: (GattEvent) -> Unit): GattStart =
+    private fun startGatt(adapter: BluetoothAdapter, address: String, autoConnect: Boolean, onEvent: (GattEvent) -> Unit): GattStart =
         try {
             val device = adapter.getRemoteDevice(address)
-            device.connectGatt(context, false, GattCallback(onEvent), BluetoothDevice.TRANSPORT_LE)
+            device.connectGatt(context, autoConnect, GattCallback(onEvent), BluetoothDevice.TRANSPORT_LE)
                 ?.let(GattStart::Connected)
                 ?: GattStart.Refused(GattConnectStart.BluetoothOff)
         } catch (_: SecurityException) {

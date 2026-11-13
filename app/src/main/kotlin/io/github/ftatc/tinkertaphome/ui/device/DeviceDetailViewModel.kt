@@ -7,56 +7,42 @@ import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.ftatc.tinkertaphome.domain.Outcome
-import io.github.ftatc.tinkertaphome.domain.ble.DeviceConnection
 import io.github.ftatc.tinkertaphome.domain.model.ConnectedDevice
-import io.github.ftatc.tinkertaphome.domain.model.ConnectionError
 import io.github.ftatc.tinkertaphome.domain.model.DeviceError
 import io.github.ftatc.tinkertaphome.domain.usecase.ObserveConnectedDevicesUseCase
+import io.github.ftatc.tinkertaphome.domain.usecase.RetryConnectionUseCase
 import io.github.ftatc.tinkertaphome.ui.navigation.DeviceDetailRoute
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.launch
 
 /**
- * ViewModel för detaljskärmen. Visar enhetens anslutningsstatus och ansluter eller kopplar ner.
+ * ViewModel för detaljskärmen. Visar enhetens anslutningsstatus.
  *
- * Anslutningen ligger kvar när användaren lämnar skärmen, så att statusen syns i enhetslistan.
- * Lämnar användaren skärmen medan en anslutning pågår avbryts den.
+ * Appen ansluter själv till sparade enheter medan den syns (se `ForegroundConnectionsViewModel`),
+ * så skärmen har inga knappar för att ansluta eller koppla ner. Har ett fel stoppat anslutningen kan
+ * användaren försöka igen.
  */
 @HiltViewModel(assistedFactory = DeviceDetailViewModel.Factory::class)
 class DeviceDetailViewModel @AssistedInject constructor(
     @Assisted route: DeviceDetailRoute,
     observeConnectedDevices: ObserveConnectedDevicesUseCase,
-    private val connection: DeviceConnection,
+    private val retryConnection: RetryConnectionUseCase,
 ) : ViewModel() {
 
-    private val connectError = MutableStateFlow<ConnectionError?>(null)
-
     val uiState: StateFlow<DeviceDetailUiState> =
-        combine(observeConnectedDevices.device(route.deviceId), connectError) { outcome, error ->
-            outcome.toDeviceDetailUiState(error)
-        }.stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
-            initialValue = DeviceDetailUiState.Loading,
-        )
+        observeConnectedDevices.device(route.deviceId)
+            .map { it.toDeviceDetailUiState() }
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
+                initialValue = DeviceDetailUiState.Loading,
+            )
 
-    fun onConnectClick() {
+    fun onRetryClick() {
         val device = (uiState.value as? DeviceDetailUiState.Content)?.device ?: return
-        connectError.value = null
-        viewModelScope.launch {
-            val result = connection.connect(device.address)
-            if (result is Outcome.Failure) connectError.value = result.error
-        }
-    }
-
-    fun onDisconnectClick() {
-        val device = (uiState.value as? DeviceDetailUiState.Content)?.device ?: return
-        connectError.value = null
-        connection.disconnect(device.address)
+        retryConnection(device.address)
     }
 
     @AssistedFactory
@@ -70,11 +56,9 @@ class DeviceDetailViewModel @AssistedInject constructor(
     }
 }
 
-private fun Outcome<ConnectedDevice?, DeviceError>.toDeviceDetailUiState(
-    connectError: ConnectionError?,
-): DeviceDetailUiState = when (this) {
+private fun Outcome<ConnectedDevice?, DeviceError>.toDeviceDetailUiState(): DeviceDetailUiState = when (this) {
     is Outcome.Failure -> DeviceDetailUiState.Error(error)
     is Outcome.Success -> value
-        ?.let { DeviceDetailUiState.Content(it.device, it.connection, connectError) }
+        ?.let { DeviceDetailUiState.Content(it.device, it.connection) }
         ?: DeviceDetailUiState.NotFound
 }

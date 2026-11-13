@@ -76,12 +76,14 @@ class DeviceListContentTest {
                 listOf(
                     ConnectedDevice(testDevice(id = 1, name = "Lampa"), ConnectionState.Connected),
                     ConnectedDevice(testDevice(id = 2, name = "Relä"), ConnectionState.Connecting),
+                    ConnectedDevice(testDevice(id = 3, name = "Servo"), ConnectionState.Waiting),
                 ),
             ),
         )
 
         composeRule.onNodeWithText(string(R.string.connection_connected)).assertIsDisplayed()
         composeRule.onNodeWithText(string(R.string.connection_connecting)).assertIsDisplayed()
+        composeRule.onNodeWithText(string(R.string.connection_waiting)).assertIsDisplayed()
     }
 
     @Test

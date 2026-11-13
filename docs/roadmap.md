@@ -216,6 +216,7 @@ Underlag: `docs/ble-protocol.md` (protokollversion 3, firmware TinkerTapNode `0.
 - ✅ **Anslutning** (fråga 5): sparade noder ansluts med `autoConnect = true` medan appen syns, och alla noder kopplas ner när appen går till bakgrunden. Appen begär `requestMtu(247)`.
 - ✅ **Info-JSON:** tolkas med `kotlinx-serialization-json` (samma version som `kotlinx-serialization-core`) och `ignoreUnknownKeys = true`. Biblioteket och pluginet `kotlin-serialization` läggs till i `:data` i steg 6.1, och `gradle/verification-metadata.xml` uppdateras i samma ändring.
 - 🔶 **Bestäms under arbetet:** hur en sparad nod parkopplas igen (spara-flödet ger `AlreadySaved`).
+- ✅ **Detaljvyn utan knappar för att ansluta** (steg 6.3, beslut 2026-11-13): anslutningen sköts automatiskt, så knapparna Anslut och Koppla ner är borttagna. När ett fel har stoppat anslutningen visar detaljvyn "Försök igen". Efter ett avbrott ansluter appen igen efter 5 s. Fel som kräver något av användaren, som `PairingMissing` och `BluetoothOff`, stoppar försöken tills användaren trycker på "Försök igen" eller appen visas på nytt.
 - ✅ **Väntan på Result** (steg 6.2): högst 2 s efter att skrivningen har bekräftats (`GattSession.REPLY_TIMEOUT`). Noden skickar Result före bekräftelsen, så tiden är bara marginal. Kommer inget svar stängs anslutningen med `ConnectionError.NoReply`.
 - 🔶 **Verifieras på hårdvara under fasen:** fråga 1 (parkopplingen med Android 16) och fråga 6 (ordningen mellan Result och skrivbekräftelsen).
 

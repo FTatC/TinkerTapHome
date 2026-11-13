@@ -9,7 +9,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -35,19 +34,14 @@ import io.github.ftatc.tinkertaphome.ui.theme.TinkerTapTheme
 @Composable
 fun DeviceDetailScreen(viewModel: DeviceDetailViewModel) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    DeviceDetailContent(
-        uiState = uiState,
-        onConnectClick = viewModel::onConnectClick,
-        onDisconnectClick = viewModel::onDisconnectClick,
-    )
+    DeviceDetailContent(uiState = uiState, onRetryClick = viewModel::onRetryClick)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DeviceDetailContent(
     uiState: DeviceDetailUiState,
-    onConnectClick: () -> Unit,
-    onDisconnectClick: () -> Unit,
+    onRetryClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val title = (uiState as? DeviceDetailUiState.Content)?.device?.name.orEmpty()
@@ -60,7 +54,7 @@ fun DeviceDetailContent(
             DeviceDetailUiState.Loading -> LoadingState(contentModifier)
             DeviceDetailUiState.NotFound -> CenteredText(stringResource(R.string.device_not_found), contentModifier)
             is DeviceDetailUiState.Error -> CenteredText(storageErrorMessage(uiState.error), contentModifier)
-            is DeviceDetailUiState.Content -> DeviceDetails(uiState, onConnectClick, onDisconnectClick, contentModifier)
+            is DeviceDetailUiState.Content -> DeviceDetails(uiState, onRetryClick, contentModifier)
         }
     }
 }
@@ -68,8 +62,7 @@ fun DeviceDetailContent(
 @Composable
 private fun DeviceDetails(
     uiState: DeviceDetailUiState.Content,
-    onConnectClick: () -> Unit,
-    onDisconnectClick: () -> Unit,
+    onRetryClick: () -> Unit,
     modifier: Modifier,
 ) {
     Column(modifier = modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -82,19 +75,10 @@ private fun DeviceDetails(
                 style = MaterialTheme.typography.bodyMedium,
             )
         }
-        ConnectionButton(uiState.connection, onConnectClick, onDisconnectClick)
-    }
-}
-
-/** Anslut när enheten inte är ansluten, koppla ner när den är ansluten eller håller på att ansluta. */
-@Composable
-private fun ConnectionButton(connection: ConnectionState, onConnectClick: () -> Unit, onDisconnectClick: () -> Unit) {
-    when (connection) {
-        ConnectionState.Connected, ConnectionState.Connecting -> OutlinedButton(onClick = onDisconnectClick) {
-            Text(stringResource(R.string.device_disconnect))
-        }
-        ConnectionState.Disconnected, is ConnectionState.Failed -> Button(onClick = onConnectClick) {
-            Text(stringResource(R.string.device_connect))
+        if (uiState.canRetry) {
+            Button(onClick = onRetryClick) {
+                Text(stringResource(R.string.device_retry))
+            }
         }
     }
 }
@@ -128,8 +112,7 @@ private fun DeviceDetailContentPreview() {
                 device = Device(id = 1, address = checkNotNull(BleAddress.parse("AA:BB:CC:DD:EE:01")), name = "Lampa"),
                 connection = ConnectionState.Connected,
             ),
-            onConnectClick = {},
-            onDisconnectClick = {},
+            onRetryClick = {},
         )
     }
 }

@@ -6,7 +6,13 @@ sealed interface ConnectionState {
     /** Ingen anslutning, antingen från början eller för att användaren kopplade ner. */
     data object Disconnected : ConnectionState
 
-    /** Anslutning, parkoppling och sökning efter tjänster pågår. */
+    /**
+     * Väntar på att enheten ska komma inom räckhåll. Android ansluter själv när den syns, hur länge
+     * det än dröjer.
+     */
+    data object Waiting : ConnectionState
+
+    /** Enheten har svarat, och anslutning, parkoppling och sökning efter tjänster pågår. */
     data object Connecting : ConnectionState
 
     /** Enheten är ansluten, parkopplad och redo för läsning och skrivning. */

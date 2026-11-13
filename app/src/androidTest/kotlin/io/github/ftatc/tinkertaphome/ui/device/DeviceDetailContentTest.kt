@@ -25,8 +25,7 @@ class DeviceDetailContentTest {
     val composeRule = createComposeRule()
 
     private val lampa = testDevice(id = 1, name = "Lampa")
-    private var connectClicks = 0
-    private var disconnectClicks = 0
+    private var retryClicks = 0
 
     private fun string(id: Int, vararg args: Any) =
         InstrumentationRegistry.getInstrumentation().targetContext.getString(id, *args)
@@ -34,17 +33,12 @@ class DeviceDetailContentTest {
     private fun show(uiState: DeviceDetailUiState) {
         composeRule.setContent {
             TinkerTapTheme {
-                DeviceDetailContent(
-                    uiState = uiState,
-                    onConnectClick = { connectClicks++ },
-                    onDisconnectClick = { disconnectClicks++ },
-                )
+                DeviceDetailContent(uiState = uiState, onRetryClick = { retryClicks++ })
             }
         }
     }
 
-    private fun showDevice(connection: ConnectionState, connectError: ConnectionError? = null) =
-        show(DeviceDetailUiState.Content(lampa, connection, connectError))
+    private fun showDevice(connection: ConnectionState) = show(DeviceDetailUiState.Content(lampa, connection))
 
     @Test
     fun loadingStateShowsProgressIndicator() {
@@ -77,33 +71,19 @@ class DeviceDetailContentTest {
     }
 
     @Test
-    fun connectButtonConnectsWhenDisconnected() {
-        showDevice(ConnectionState.Disconnected)
+    fun showsThatTheAppIsWaitingForTheDevice() {
+        showDevice(ConnectionState.Waiting)
 
-        composeRule.onNodeWithText(string(R.string.device_connect)).performClick()
-
-        assertEquals(1, connectClicks)
+        composeRule.onNodeWithText(string(R.string.connection_waiting)).assertIsDisplayed()
+        composeRule.onNodeWithText(string(R.string.device_retry)).assertDoesNotExist()
     }
 
     @Test
-    fun disconnectButtonDisconnectsWhenConnected() {
+    fun aConnectedDeviceHasNoButtons() {
         showDevice(ConnectionState.Connected)
 
         composeRule.onNodeWithText(string(R.string.connection_connected)).assertIsDisplayed()
-        composeRule.onNodeWithText(string(R.string.device_disconnect)).performClick()
-
-        assertEquals(1, disconnectClicks)
-        composeRule.onNodeWithText(string(R.string.device_connect)).assertDoesNotExist()
-    }
-
-    @Test
-    fun aConnectionInProgressCanBeCancelled() {
-        showDevice(ConnectionState.Connecting)
-
-        composeRule.onNodeWithText(string(R.string.connection_connecting)).assertIsDisplayed()
-        composeRule.onNodeWithText(string(R.string.device_disconnect)).performClick()
-
-        assertEquals(1, disconnectClicks)
+        composeRule.onNodeWithText(string(R.string.device_retry)).assertDoesNotExist()
     }
 
     @Test
@@ -112,9 +92,9 @@ class DeviceDetailContentTest {
 
         composeRule.onNodeWithText(string(R.string.connection_failed)).assertIsDisplayed()
         composeRule.onNodeWithText(string(R.string.connection_error_connect_failed, 133)).assertIsDisplayed()
-        composeRule.onNodeWithText(string(R.string.device_connect)).performClick()
+        composeRule.onNodeWithText(string(R.string.device_retry)).performClick()
 
-        assertEquals(1, connectClicks)
+        assertEquals(1, retryClicks)
     }
 
     @Test
@@ -132,8 +112,8 @@ class DeviceDetailContentTest {
     }
 
     @Test
-    fun anErrorFromStartingTheConnectionIsShown() {
-        showDevice(ConnectionState.Disconnected, connectError = ConnectionError.BluetoothOff)
+    fun bluetoothTurnedOffIsShown() {
+        showDevice(ConnectionState.Failed(ConnectionError.BluetoothOff))
 
         composeRule.onNodeWithText(string(R.string.connection_error_bluetooth_off)).assertIsDisplayed()
     }

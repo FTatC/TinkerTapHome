@@ -15,18 +15,14 @@ sealed interface DeviceDetailUiState {
 
     data class Error(val error: DeviceError) : DeviceDetailUiState
 
-    /**
-     * @property connectError Felet från det senaste försöket att ansluta, om det misslyckades innan
-     * en anslutning startades, till exempel för att Bluetooth är avstängt. Ändrar inte [connection].
-     */
-    data class Content(
-        val device: Device,
-        val connection: ConnectionState,
-        val connectError: ConnectionError? = null,
-    ) : DeviceDetailUiState {
+    data class Content(val device: Device, val connection: ConnectionState) : DeviceDetailUiState {
 
-        /** Felet som ska visas: från det senaste försöket att ansluta, annars från statusen. */
+        /** Felet som stoppade den senaste anslutningen, om den misslyckades. */
         val error: ConnectionError?
-            get() = connectError ?: (connection as? ConnectionState.Failed)?.error
+            get() = (connection as? ConnectionState.Failed)?.error
+
+        /** Användaren kan försöka igen när ett fel har stoppat anslutningen. */
+        val canRetry: Boolean
+            get() = connection is ConnectionState.Failed
     }
 }

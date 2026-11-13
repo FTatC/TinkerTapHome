@@ -20,6 +20,9 @@ internal class FakeGattConnector : GattConnector {
 
     var bonded = true
 
+    /** `autoConnect` för varje anslutning som har startats, i ordning. */
+    val autoConnects = mutableListOf<Boolean>()
+
     var readValue = byteArrayOf(1, 2, 3)
 
     /** Svaret som skickas direkt när en operation startas, eller `null` för att svara själv. */
@@ -44,8 +47,11 @@ internal class FakeGattConnector : GattConnector {
 
     override fun isBluetoothEnabled(): Boolean = bluetoothEnabled
 
-    override fun connect(address: String, onEvent: (GattEvent) -> Unit): GattConnectStart {
+    override fun isBonded(address: String): Boolean = bonded
+
+    override fun connect(address: String, autoConnect: Boolean, onEvent: (GattEvent) -> Unit): GattConnectStart {
         connectCount++
+        autoConnects += autoConnect
         refuseWith?.let { return it }
         handle = FakeGattHandle(this)
         handles += handle
