@@ -297,7 +297,7 @@ Info är en JSON-sträng i UTF-8 som beskriver noden. Den skrivs vid uppstart oc
 | `dev[].n` | sträng | Utgångens namn, till exempel `"led"`. Kort och på engelska. |
 | `dev[].t` | sträng | Typ: `"D"` = Digital, `"P"` = PWM, `"S"` = Servo |
 
-- **Läs Info först** efter anslutning och kontrollera `proto`. Är `proto` okänt ska appen koppla från och inte styra noden. Den ska visa att noden kräver en annan appversion.
+- **Läs Info först** efter anslutning och kontrollera `proto`. Appen stöder bara den senaste versionen, `3` (fråga 4 i [`docs/open-questions.md`](open-questions.md), beslut 2026-11-13). Är `proto` något annat ska appen koppla från och inte styra noden. Är versionen lägre visar appen att noden behöver ny firmware, och är den högre att appen behöver uppdateras. Saknas `proto` räknas noden som för gammal.
 - **Okända fält ska ignoreras.** Firmwaren lägger till nya fält utan att höja `proto`. Ändrad betydelse eller borttagna fält kräver ett nytt `proto`.
 - **Hårdkoda aldrig `deviceId`.** Id:t är ett index i firmwarens tabell och kan ändras mellan firmwareversioner. Appen bygger listan över utgångar från `dev` vid varje anslutning.
 - Strängen är högst **512 byte**, vilket är ATT-gränsen. Firmwaren kontrollerar redan vid kompilering att JSON:en ryms, så den kortas inte av. Appen ska ändå behandla ogiltig JSON som ett fel.

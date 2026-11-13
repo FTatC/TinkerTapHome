@@ -7,7 +7,7 @@ Beslut som agenten inte får ta själv (se CLAUDE.md). Varje fråga har ett svar
 | 1 | [Parkoppling och identitet](#1-parkoppling-och-identitet) | Fas 6, beslut 1.3 | 🔶 Öppen |
 | 2 | [Var tokenet kommer ifrån och var det sparas](#2-var-tokenet-kommer-ifrån-och-var-det-sparas) | Fas 6, databasschema | 🔶 Öppen |
 | 3 | [Token i telefonen](#3-token-i-telefonen) | Fas 6 | 🔶 Öppen |
-| 4 | [Vilka protokollversioner appen stöder](#4-vilka-protokollversioner-appen-stöder) | Fas 6 | 🔶 Öppen |
+| 4 | [Vilka protokollversioner appen stöder](#4-vilka-protokollversioner-appen-stöder) | Fas 6 | ✅ Besvarad 2026-11-13 |
 | 5 | [`autoConnect` och en anslutning åt gången](#5-autoconnect-och-en-anslutning-åt-gången) | Fas 5 (uppföljning), fas 6 | ✅ Besvarad 2026-11-13 |
 | 6 | [Ordningen mellan Result och skrivbekräftelsen](#6-ordningen-mellan-result-och-skrivbekräftelsen) | Fas 6 | 🔶 Öppen, kräver test på enhet |
 | 7 | [Parkopplingsknappen och glömda parkopplingar i appen](#7-parkopplingsknappen-och-glömda-parkopplingar-i-appen) | Fas 6 | 🔶 Öppen |
@@ -59,7 +59,13 @@ Firmware `0.1.0` saknar både `proto` och Result. Protokoll 3 är mergat till Ar
 
 **Fråga:** Ska appen bara stödja `proto` = `3` och visa ett tydligt fel för andra versioner, så att äldre noder måste uppdateras? Det är förslaget. Alternativet är att också stödja `2` tills alla noder är uppdaterade. Skillnaden för appen är i princip om parkoppling krävs, och det står i fältet `pair`.
 
-**Svar:** –
+**Svar (2026-11-13):** Appen stöder **bara den senaste protokollversionen**, i dag `proto` = `3`.
+- Andra värden på `proto` ger ett tydligt fel, och appen kopplar ner utan att styra noden:
+  - Lägre version: noden behöver flashas med ny firmware.
+  - Högre version: appen behöver uppdateras.
+  - Info som saknar `proto` eller inte går att tolka, till exempel från firmware `0.1.0`, behandlas som en för gammal nod.
+- Ingen kod för äldre protokoll. Fältet `pair` läses ändå, eftersom firmwaren kan byggas med `PAIRING_REQUIRED = false`.
+- När firmwaren höjer `PROTOCOL_VERSION` uppdateras `docs/ble-protocol.md` och appen till den nya versionen, och den gamla slutar stödjas.
 
 ## 5. `autoConnect` och en anslutning åt gången
 

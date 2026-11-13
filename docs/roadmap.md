@@ -207,6 +207,7 @@ Ordningen är vald så att datamodellen är rättad innan BLE-koden börjar anv�
 
 - ✅ **Protokollspecifikation:** `docs/ble-protocol.md` beskriver protokollversion 3 från firmwaren TinkerTapNode `0.4.0` (Arduino-repots `main`, commit `7632768`). Protokoll 3 kräver parkoppling, vilket stämmer med beslut 1.3.
 - 🔶 **Öppna frågor innan arbetet börjar:** parkoppling, token, vilka protokollversioner appen stöder med mera. De finns i `docs/open-questions.md`.
+- ✅ **Protokollversion** (fråga 4, beslut 2026-11-13): bara `proto` = `3` stöds. Andra versioner ger ett domänfel som skiljer på för gammal nod och för gammal app.
 - **`:domain`:** utgångstyperna kommer från Info: `Digital`, `Pwm` och `Servo`. Protokollet har inga sensorer. Use cases för att läsa utgångarna, autentisera och skicka kommandon, till exempel `ObserveOutputsUseCase`, `SetOutputUseCase` och `AllOffUseCase`. Fel från Result modelleras som en sealed typ.
 - **`:data`:** `ble/protocol/` med rena funktioner för kodning och avkodning. De testas bit för bit mot exempel ur specifikationen, och testerna fungerar som skydd för att protokollet inte ändras av misstag.
 - **Schemaändring?** Om token ska sparas per nod (fråga 2): databasversion 2, en migration i `ALL_MIGRATIONS`, schema-JSON för version 2 och ett migreringstest. Info behöver inte sparas, eftersom den läses vid varje anslutning.
