@@ -217,7 +217,7 @@ Ordningen är vald så att datamodellen är rättad innan BLE-koden börjar anv�
   4. **Vänta på Result uttryckligen** efter varje skrivning, matchat på opcode och `deviceId`, eftersom `write()` kan returnera innan notifieringen har behandlats.
   5. **GATT-status `5` och `15`** vid skrivning ska bli ett eget domänfel, "noden har glömt telefonen", i stället för `OperationFailed(status)`.
 - **Mer som saknas:** omförsök vid status `133`, `requestMtu(247)` och att TinkerTapNode känns igen på service-UUID:t vid skanning.
-- **Tolkning av Info-JSON:** `kotlinx-serialization-json` är ett nytt beroende och kräver godkännande. `org.json` finns i Android men fungerar inte i JVM-enhetstester utan extra knep. Beslut behövs innan arbetet börjar.
+- ✅ **Tolkning av Info-JSON** (beslut 2026-11-13): `kotlinx-serialization-json` används. Den har samma version som `kotlinx-serialization-core` (`kotlinxSerialization` i `libs.versions.toml`). Den läggs till i `:data` tillsammans med pluginet `kotlin-serialization` när fas 6 påbörjas, och `gradle/verification-metadata.xml` uppdateras i samma ändring. Tolkningen använder `ignoreUnknownKeys = true`, eftersom firmwaren lägger till fält utan att höja `proto`. Den testas med JVM-enhetstester mot exemplen i `docs/ble-protocol.md`.
 
 ---
 
