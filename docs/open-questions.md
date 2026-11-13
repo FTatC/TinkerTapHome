@@ -8,7 +8,7 @@ Beslut som agenten inte får ta själv (se CLAUDE.md). Varje fråga har ett svar
 | 2 | [Var tokenet kommer ifrån och var det sparas](#2-var-tokenet-kommer-ifrån-och-var-det-sparas) | Fas 6, databasschema | 🔶 Öppen |
 | 3 | [Token i telefonen](#3-token-i-telefonen) | Fas 6 | 🔶 Öppen |
 | 4 | [Vilka protokollversioner appen stöder](#4-vilka-protokollversioner-appen-stöder) | Fas 6 | 🔶 Öppen |
-| 5 | [`autoConnect` och en anslutning åt gången](#5-autoconnect-och-en-anslutning-åt-gången) | Fas 5 (uppföljning), fas 7 | 🔶 Öppen |
+| 5 | [`autoConnect` och en anslutning åt gången](#5-autoconnect-och-en-anslutning-åt-gången) | Fas 5 (uppföljning), fas 6 | ✅ Besvarad 2026-11-13 |
 | 6 | [Ordningen mellan Result och skrivbekräftelsen](#6-ordningen-mellan-result-och-skrivbekräftelsen) | Fas 6 | 🔶 Öppen, kräver test på enhet |
 | 7 | [Parkopplingsknappen och glömda parkopplingar i appen](#7-parkopplingsknappen-och-glömda-parkopplingar-i-appen) | Fas 6 | 🔶 Öppen |
 
@@ -70,7 +70,15 @@ Firmware `0.1.0` saknar både `proto` och Result. Protokoll 3 är mergat till Ar
 - Ska appen koppla från när den inte syns, så att andra telefoner kan ansluta? Det påverkar planen för anslutningar i bakgrunden i fas 7.
 - Ska appen begära `requestMtu(247)`, som firmwaren rekommenderar? Det behövs inte för protokollet men gör att Info läses snabbare.
 
-**Svar:** –
+**Svar (2026-11-13):** Appen använder `autoConnect = true` **i förgrunden**.
+- Sparade noder ansluts med `autoConnect = true` medan appen syns, så att Android ansluter när noden kommer inom räckhåll. En ny nod som inte har sparats ansluts fortfarande med `autoConnect = false`.
+- När appen går till bakgrunden kopplar den ner alla noder. Då annonserar noderna igen och andra telefoner kan ansluta. När appen syns igen ansluter den på nytt.
+- Anslutningar i bakgrunden, med en foreground service, görs inte nu. De ligger kvar i fas 7.
+- Appen begär `requestMtu(247)` efter anslutningen och före `discoverServices()`, som firmwaren rekommenderar. Får appen ett lägre värde fungerar protokollet ändå, så ett avslag eller ett lägre MTU-värde är inget fel.
+
+**Följder för koden:**
+- `CONNECT_TIMEOUT` på 15 s gäller inte för `autoConnect = true`. Anslutningen behöver ett tillstånd för att vänta på noden, till exempel "väntar på noden", som inte är ett fel.
+- Signalen om förgrund och bakgrund kommer från gränssnittet, till exempel med `LifecycleStartEffect` från `lifecycle-runtime-compose`, som redan finns i `:app`. Den skickas som en händelse till en ViewModel, som anropar ett use case i `:domain`. Inget nytt beroende behövs.
 
 ## 6. Ordningen mellan Result och skrivbekräftelsen
 
