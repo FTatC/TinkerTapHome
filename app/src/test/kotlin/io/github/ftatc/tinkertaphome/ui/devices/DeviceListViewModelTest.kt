@@ -10,6 +10,7 @@ import io.github.ftatc.tinkertaphome.domain.model.Device
 import io.github.ftatc.tinkertaphome.domain.model.DeviceError
 import io.github.ftatc.tinkertaphome.domain.model.SaveDeviceError
 import io.github.ftatc.tinkertaphome.domain.model.testDevice
+import io.github.ftatc.tinkertaphome.domain.node.AuthToken
 import io.github.ftatc.tinkertaphome.domain.repository.DeviceRepository
 import io.github.ftatc.tinkertaphome.domain.repository.FakeDeviceRepository
 import io.github.ftatc.tinkertaphome.domain.usecase.ObserveConnectedDevicesUseCase
@@ -117,7 +118,11 @@ class DeviceListViewModelTest {
         private val flow = MutableSharedFlow<Outcome<List<Device>, DeviceError>>()
         override fun observeDevices(): Flow<Outcome<List<Device>, DeviceError>> = flow
         suspend fun emit(outcome: Outcome<List<Device>, DeviceError>) = flow.emit(outcome)
-        override suspend fun save(address: BleAddress, name: String): Outcome<Device, SaveDeviceError> =
+        override suspend fun save(address: BleAddress, name: String, token: AuthToken?): Outcome<Device, SaveDeviceError> =
             throw NotImplementedError("Enhetslistan sparar inga enheter")
+        override suspend fun authToken(address: BleAddress): Outcome<AuthToken?, DeviceError> =
+            throw NotImplementedError("Enhetslistan läser inga token")
+        override suspend fun updateAuthToken(address: BleAddress, token: AuthToken?): Outcome<Unit, DeviceError> =
+            throw NotImplementedError("Enhetslistan ändrar inga token")
     }
 }

@@ -9,6 +9,7 @@ import io.github.ftatc.tinkertaphome.domain.model.testAddress
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -56,5 +57,23 @@ class DeviceDaoTest {
         }
 
         assertTrue(result.exceptionOrNull() is SQLiteConstraintException)
+    }
+
+    @Test
+    fun findsADeviceByAddressWithItsToken() = runTest {
+        val id = dao.insert(DeviceEntity(address = address, name = "Lampa", authToken = "tinker"))
+
+        assertEquals(DeviceEntity(id = id, address = address, name = "Lampa", authToken = "tinker"), dao.findByAddress(address))
+        assertNull(dao.findByAddress(testAddress(2).value))
+    }
+
+    @Test
+    fun updatesTheTokenOfOneDevice() = runTest {
+        dao.insert(DeviceEntity(address = address, name = "Lampa"))
+
+        assertEquals(1, dao.updateAuthToken(address, "nytt"))
+        assertEquals(0, dao.updateAuthToken(testAddress(2).value, "nytt"))
+
+        assertEquals("nytt", dao.findByAddress(address)?.authToken)
     }
 }

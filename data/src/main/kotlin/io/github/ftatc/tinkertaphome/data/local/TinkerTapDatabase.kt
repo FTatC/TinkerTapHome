@@ -1,6 +1,7 @@
 package io.github.ftatc.tinkertaphome.data.local
 
 import android.content.Context
+import androidx.room.AutoMigration
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
@@ -15,6 +16,10 @@ import androidx.room.RoomDatabase
     entities = [DeviceEntity::class],
     version = TinkerTapDatabase.VERSION,
     exportSchema = true,
+    autoMigrations = [
+        // Version 2: kolumnen auth_token i devices, som kan vara tom (fas 6, steg 6.4).
+        AutoMigration(from = 1, to = 2),
+    ],
 )
 internal abstract class TinkerTapDatabase : RoomDatabase() {
 
@@ -22,7 +27,7 @@ internal abstract class TinkerTapDatabase : RoomDatabase() {
 
     companion object {
         const val NAME = "tinkertap.db"
-        const val VERSION = 1
+        const val VERSION = 2
 
         /** Bygger databasen med appens konfiguration. Används av Hilt och av migreringstesterna. */
         fun build(context: Context, name: String = NAME): TinkerTapDatabase =
