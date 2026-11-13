@@ -209,7 +209,15 @@ Ordningen är vald så att datamodellen är rättad innan BLE-koden börjar anv�
 - 🔶 **Öppna frågor innan arbetet börjar:** parkoppling, token, vilka protokollversioner appen stöder med mera. De finns i `docs/open-questions.md`.
 - **`:domain`:** utgångstyperna kommer från Info: `Digital`, `Pwm` och `Servo`. Protokollet har inga sensorer. Use cases för att läsa utgångarna, autentisera och skicka kommandon, till exempel `ObserveOutputsUseCase`, `SetOutputUseCase` och `AllOffUseCase`. Fel från Result modelleras som en sealed typ.
 - **`:data`:** `ble/protocol/` med rena funktioner för kodning och avkodning. De testas bit för bit mot exempel ur specifikationen, och testerna fungerar som skydd för att protokollet inte ändras av misstag.
-- **Schemaändring?** Om token ska sparas per nod (fråga 2): databasversion 2, en migration i `ALL_MIGRATIONS`, schema-JSON för version 2 och ett migreringstest.
+- **Schemaändring?** Om token ska sparas per nod (fråga 2): databasversion 2, en migration i `ALL_MIGRATIONS`, schema-JSON för version 2 och ett migreringstest. Info behöver inte sparas, eftersom den läses vid varje anslutning.
+- **Krockar med fas 5-koden** (från firmwarens `docs/app-flow.md`, se "Jämfört med appen i dag" i `docs/ble-protocol.md`):
+  1. **Parkopplingsknappen:** `GattSession.connect()` parkopplar direkt efter anslutningen. För en nod som inte är parkopplad måste appen be användaren trycka på knappen **innan** `connect()` anropas, annars blir resultatet bara `BondFailed`.
+  2. **Tiden för AUTH (`ato`, 10 s):** Info, CCCD för Result och State, läsning av State och `AUTH` måste köras automatiskt direkt efter `connect()`. I dag ansluter detaljskärmen utan att göra något, och noden kopplar ner efter 10 s. Timeouten per operation (`OPERATION_TIMEOUT`, 10 s) behöver ses över.
+  3. **`autoConnect = true`** (fråga 5) passar inte med `CONNECT_TIMEOUT` på 15 s. Det behövs ett tillstånd för att vänta på noden i stället för en timeout.
+  4. **Vänta på Result uttryckligen** efter varje skrivning, matchat på opcode och `deviceId`, eftersom `write()` kan returnera innan notifieringen har behandlats.
+  5. **GATT-status `5` och `15`** vid skrivning ska bli ett eget domänfel, "noden har glömt telefonen", i stället för `OperationFailed(status)`.
+- **Mer som saknas:** omförsök vid status `133`, `requestMtu(247)` och att TinkerTapNode känns igen på service-UUID:t vid skanning.
+- **Tolkning av Info-JSON:** `kotlinx-serialization-json` är ett nytt beroende och kräver godkännande. `org.json` finns i Android men fungerar inte i JVM-enhetstester utan extra knep. Beslut behövs innan arbetet börjar.
 
 ---
 
