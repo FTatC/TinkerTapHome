@@ -1,8 +1,10 @@
-# BLE-protokoll: TinkerTapNode (protokollversion 2)
+# BLE-protokoll: TinkerTapNode (protokollversion 3)
 
 Det här dokumentet beskriver protokollet som TinkerTapHome använder för att prata med enheter som kör firmwaren **TinkerTapNode**. Det är underlaget för fas 6 i `docs/roadmap.md`.
 
-**Källa:** Arduino-repot `TinkerTapNode`, `main` vid commit `5abdec2`: filerna `config.h`, `protocol.h`, `TinkerTapNode.ino` och avsnittet om BLE-arkitektur i repots CLAUDE.md. Det gäller firmwareversion `0.3.1` och **protokollversion 2**.
+**Källa:** Arduino-repot `TinkerTapNode`, branchen `feature/ble-pairing` vid commit `f6a1aaf`: filerna `config.h`, `protocol.h`, `bonds.cpp`, `TinkerTapNode.ino` och avsnittet om BLE-arkitektur i repots CLAUDE.md. Det gäller firmwareversion `0.4.0` och **protokollversion 3**.
+
+> **Status:** Protokoll 3 är ännu inte mergat till `main` i Arduino-repot. Där gäller fortfarande protokoll 2 (fw `0.3.1`, `5abdec2`). Det har inte heller bekräftats att parkopplingen fungerar på kortet. Testsketchen `tests/PairingTest` finns för det. Dokumentet bör stämmas av igen när branchen är mergad.
 
 Där firmwarens CLAUDE.md och dess kod skiljer sig gäller **koden**, eftersom det är den som körs på enheterna. Detaljer som bara framgår av koden är markerade med *(kod)*.
 
@@ -12,6 +14,7 @@ Där firmwarens CLAUDE.md och dess kod skiljer sig gäller **koden**, eftersom d
 
 - Noden är BLE-**peripheral** (GATT-server). Appen är **central**.
 - Noden tar emot **en anslutning åt gången**.
+- Telefonen måste vara **parkopplad** med noden för att få skriva kommandon. Nya parkopplingar godtas bara när någon har tryckt på nodens parkopplingsknapp (se [Parkoppling](#parkoppling)).
 - En anpassad 128-bitars service med fyra karakteristiker:
 
   | Karakteristik | Används till |
@@ -50,12 +53,53 @@ Bas-UUID: `7d3cXXXX-5b2e-4a8f-9c61-2e4b8a1f7c90`, där `XXXX` är karakteristike
 | Namn | UUID | Egenskaper | Längd | Format |
 |---|---|---|---|---|
 | Service | `7d3c0000-5b2e-4a8f-9c61-2e4b8a1f7c90` | – | – | – |
-| Command | `7d3c0001-5b2e-4a8f-9c61-2e4b8a1f7c90` | Write, Write Without Response | 1–20 byte | Binärt, se [Command](#command-0001) |
+| Command | `7d3c0001-5b2e-4a8f-9c61-2e4b8a1f7c90` | Write, Write Without Response, **kräver krypterad länk** | 1–20 byte | Binärt, se [Command](#command-0001) |
 | State | `7d3c0002-5b2e-4a8f-9c61-2e4b8a1f7c90` | Read, Notify | Fast: en byte per utgång | Binärt, se [State](#state-0002) |
 | Info | `7d3c0003-5b2e-4a8f-9c61-2e4b8a1f7c90` | Read | Högst 512 byte | JSON i UTF-8, se [Info](#info-0003) |
 | Result | `7d3c0004-5b2e-4a8f-9c61-2e4b8a1f7c90` | Read, Notify | Fast: 3 byte | Binärt, se [Result](#result-0004) |
 
-Ingen karakteristik kräver kryptering eller parkoppling på BLE-nivå. Skyddet ligger i protokollet (se [Autentisering](#autentisering-auth)).
+Bara **Command** kräver krypterad länk, och den får bara en parkopplad telefon. Info, State och Result kan läsas och ge notifieringar utan kryptering. Efter parkopplingen är ändå hela länken krypterad.
+
+Ovanpå parkopplingen finns ett token (se [Autentisering](#autentisering-auth)).
+
+## Parkoppling
+
+Gäller när `pair` = `1` i Info. Det är standard i firmwaren (`PAIRING_REQUIRED = true`).
+
+### Parkopplingsfönster
+
+- Nya parkopplingar godtas bara medan **parkopplingsfönstret** är öppet. Fönstret öppnas med en tryckknapp på noden (D2 mot GND).
+- Fönstret är öppet i **30 sekunder** och tar emot **en** parkoppling. Det stängs när en parkoppling har sparats, när tiden har gått ut eller när någon trycker på knappen igen.
+- Parkopplingen är av typen **Just Works**, så ingen kod behöver jämföras. Skyddet är att fönstret bara kan öppnas av någon som står vid noden.
+- LED-matrisen på noden visar:
+
+  | Symbol | Betydelse |
+  |---|---|
+  | Blinkande Bluetooth-symbol | Fönstret är öppet |
+  | Fast Bluetooth-symbol | En app är ansluten och har skickat rätt token |
+  | Bock | En ny parkoppling har sparats |
+  | Kryss | Parkopplingen misslyckades, eller alla parkopplingar har raderats |
+
+- *(kod)* Om en parkopplingsförfrågan kom men ingen parkoppling sparades innan tiden gick ut, visas kryss.
+
+### Lagrade parkopplingar
+
+- Noden sparar nycklarna (LTK och IRK) för **högst 4 telefoner** i sitt flashminne, och de finns kvar efter omstart. När en femte telefon parkopplas ersätts den **äldsta**, utan att den telefonen får veta något.
+- *(kod)* Om samma telefon parkopplas igen ersätts dess gamla nycklar.
+- **Alla parkopplingar raderas** om man håller knappen intryckt i 3 sekunder vid uppstart. Det visas som ett blinkande kryss och sedan ett fast kryss.
+- När noden har glömt en telefon, för att den har raderats eller ersatts, tror Android fortfarande att den är parkopplad. Krypteringen misslyckas då. Användaren måste ta bort noden i Androids Bluetooth-inställningar och parkoppla igen.
+
+### Skrivningar före kryptering
+
+- En skrivning till Command över en okrypterad länk besvaras med ATT-felet *Insufficient Encryption*.
+  - Är telefonen redan parkopplad, krypterar Android länken och skickar skrivningen igen.
+  - Är den inte parkopplad, startar Android en parkoppling. Den lyckas bara om fönstret är öppet.
+- Enligt firmwarens CLAUDE.md håller ArduinoBLE kvar skrivningen och utför den när länken har krypterats. Hur det samspelar med Androids omsändning bör verifieras på en riktig enhet.
+- Skrivningar med Write Without Response får inget felsvar och kan inte starta en parkoppling. Utan kryptering försvinner de tyst. Det är ytterligare ett skäl att alltid använda Write With Response.
+
+### Tid för AUTH under parkoppling
+
+*(kod)* Tiden för AUTH (`ato`) står still medan parkopplingsfönstret är öppet. Den räknas om från början när fönstret stängs. Androids parkopplingsdialog kan därmed vänta på användaren utan att noden kopplar ner.
 
 ## Command (`0001`)
 
@@ -128,7 +172,7 @@ Firmwaren rekommenderar att kommandon skickas med **Write With Response**, ett i
 **Följder för appen:**
 - Ett kommando är klart när skrivningen har bekräftats. Det senaste Result-värdet för samma opcode som kommit **efter** att skrivningen startade är svaret på kommandot.
 - Om skrivningen bekräftas utan att något Result har kommit har noden ignorerat kommandot eftersom nedkoppling pågår. Det ska behandlas som ett fel, och anslutningen bryts strax.
-- Write Without Response fungerar också, men då kan appen inte para ihop två likadana kommandon med sina svar. Appen ska inte använda det.
+- Write Without Response fungerar också, men då kan appen inte para ihop två likadana kommandon med sina svar, och utan kryptering försvinner skrivningen tyst. Appen ska inte använda det.
 - Att Result kommer före bekräftelsen bygger på hur ArduinoBLE och Androids BLE-stack beter sig. Det bör verifieras på en riktig enhet (se fråga 6 i [`docs/open-questions.md`](open-questions.md)).
 
 ### Exempel
@@ -208,14 +252,15 @@ State kan läsas utan autentisering, både direkt och via `GET_STATE`. Eftersom 
 Info är en JSON-sträng i UTF-8 som beskriver noden. Den skrivs vid uppstart och ändras inte medan noden kör. Info kan läsas utan autentisering.
 
 ```json
-{"fw":"0.3.1","proto":2,"name":"TinkerTapNode-A1B2","auth":1,"ato":10000,"hb":0,"dev":[{"id":0,"n":"led","t":"D"}]}
+{"fw":"0.4.0","proto":3,"name":"TinkerTapNode-A1B2","pair":1,"auth":1,"ato":10000,"hb":0,"dev":[{"id":0,"n":"led","t":"D"}]}
 ```
 
 | Fält | Typ | Betydelse |
 |---|---|---|
-| `fw` | sträng | Firmwareversion, till exempel `"0.3.1"`. Bara för visning. |
-| `proto` | heltal | Protokollversion. Det här dokumentet beskriver `2`. |
+| `fw` | sträng | Firmwareversion, till exempel `"0.4.0"`. Bara för visning. |
+| `proto` | heltal | Protokollversion. Det här dokumentet beskriver `3`. |
 | `name` | sträng | Nodens namn, samma som i annonseringen |
+| `pair` | heltal | `1` = parkoppling (krypterad länk) krävs för Command, `0` = krävs inte |
 | `auth` | heltal | `1` = `AUTH` krävs, `0` = krävs inte |
 | `ato` | heltal | Tid för AUTH i millisekunder, räknat från anslutningen. `0` när AUTH inte krävs. Standard är `10000`. |
 | `hb` | heltal | Timeout för heartbeat i millisekunder. `0` = avstängd. |
@@ -237,11 +282,11 @@ Info är en JSON-sträng i UTF-8 som beskriver noden. Den skrivs vid uppstart oc
 - När `auth` = `1` avvisas alla kommandon som kan ändra något (`SET`, `TOGGLE`, `PWM`, `SERVO`, `ALL_OFF` och `PING`) med `NOT_AUTHORIZED` tills appen har skickat `AUTH` med rätt token. Bara `GET_STATE` och `AUTH` är öppna. Info och State kan alltid läsas.
 - Tokenet är 1–19 byte ASCII och måste matcha exakt, både innehåll och längd. Firmwarens standardtoken är `tinker` och ska bytas innan noden används på riktigt.
 - Autentiseringen gäller **per anslutning** och nollställs när anslutningen bryts. Appen måste skicka `AUTH` efter varje anslutning.
-- **Tid för AUTH:** En central som inte har autentiserat sig inom `ato` millisekunder från anslutningen (standard 10 s) kopplas ner. Det inkluderar anslutning, MTU, service discovery, läsning av Info, CCCD för notifieringar och själva `AUTH`.
+- **Tid för AUTH:** En central som inte har autentiserat sig inom `ato` millisekunder från anslutningen (standard 10 s) kopplas ner. Det inkluderar anslutning, MTU, service discovery, läsning av Info, CCCD för notifieringar, kryptering och själva `AUTH`. Tiden står still medan parkopplingsfönstret är öppet.
 - **Fel token:** Noden skickar `AUTH_FAILED` i Result och kopplar ner cirka 200 ms senare. Under tiden ignoreras alla kommandon, så inga fler token kan provas. Appen ska **inte** automatiskt försöka igen med samma token.
 - *(kod)* Det gäller även när anslutningen redan är autentiserad: ett nytt `AUTH` med fel token kopplar ner.
 - *(kod)* Det gäller även när `auth` = `0`: `AUTH` med fel token kopplar ner. Appen ska därför bara skicka `AUTH` när `auth` = `1`.
-- **Begränsning:** Länken är okrypterad. Tokenet skyddar mot misstag och obehöriga appar, inte mot någon som avlyssnar trafiken.
+- **Kryptering:** När `pair` = `1` skickas `AUTH` alltid över en krypterad länk, eftersom det är en skrivning till Command. Tokenet kan då inte avlyssnas. När `pair` = `0` är länken okrypterad, och tokenet skyddar bara mot misstag och obehöriga appar.
 
 ## Heartbeat
 
@@ -269,15 +314,23 @@ Varje utgång har ett säkert värde (`safeValue`) i firmwaren. Det är oftast `
 
 ## Rekommenderat anslutningsflöde
 
-Flödet är hämtat från firmwarens CLAUDE.md och kompletterat med följderna ovan. **Steg 2–5 måste vara klara inom `ato` millisekunder** (standard 10 s), annars kopplar noden ner.
+Flödet är hämtat från firmwarens CLAUDE.md och kompletterat med följderna ovan. **Steg 2–6 måste vara klara inom `ato` millisekunder** (standard 10 s), annars kopplar noden ner. Tiden står still medan parkopplingsfönstret är öppet.
 
 1. Skanna med filter på service-UUID:t `7d3c0000-…`. Noder skiljs åt med namnsuffixet eller BLE-adressen.
 2. Anslut. För noder som appen redan känner till rekommenderar firmwaren `autoConnect = true`, så att Android återansluter själv när noden kommer inom räckhåll igen. Kör sedan `requestMtu(247)` och `discoverServices()`.
 3. Läs **Info**. Kontrollera `proto` och bygg listan över utgångar.
 4. Slå på notifieringar för **Result** och **State** (CCCD), och läs State för att få utgångarnas aktuella värden.
-5. Om `auth` = `1`: skicka `AUTH` och vänta på Result med `20 FF 00`. Vid `AUTH_FAILED` kopplar noden ner. Be då användaren om ett nytt token i stället för att försöka igen.
-6. Om `hb` > 0: skicka `PING` regelbundet, till exempel var `hb / 3` millisekund, så länge anslutningen är uppe.
-7. Skicka kommandon med Write With Response, ett i taget, och läs svaret i Result. Alla GATT-operationer går genom kön i `:data`.
+5. Om `pair` = `1` och telefonen inte är parkopplad med noden (`device.getBondState()`):
+   1. Be användaren trycka på nodens parkopplingsknapp.
+   2. Anropa `device.createBond()`.
+   3. Vänta på `ACTION_BOND_STATE_CHANGED` med `BOND_BONDED`.
+
+   Är telefonen redan parkopplad krypterar Android länken automatiskt vid första skrivningen till Command.
+6. Om `auth` = `1`: skicka `AUTH` med Write With Response och vänta på Result med `20 FF 00`.
+   - Vid `AUTH_FAILED` kopplar noden ner. Be då användaren om ett nytt token i stället för att försöka igen.
+   - Om krypteringen misslyckas trots att telefonen tror att den är parkopplad har noden glömt telefonen. Be användaren ta bort noden i Androids Bluetooth-inställningar och parkoppla igen.
+7. Om `hb` > 0: skicka `PING` regelbundet, till exempel var `hb / 3` millisekund, så länge anslutningen är uppe.
+8. Skicka kommandon med Write With Response, ett i taget, och läs svaret i Result. Alla GATT-operationer går genom kön i `:data`.
 
 ### Jämfört med appen i dag (fas 5)
 
@@ -286,8 +339,11 @@ Flödet är hämtat från firmwarens CLAUDE.md och kompletterat med följderna o
 | `autoConnect = true` för kända noder | `connectGatt(…, autoConnect = false, …)` i `AndroidGattConnector` |
 | `requestMtu(247)` | MTU begärs inte. Det fungerar med standard-MTU, men Info läses då i fler paket. |
 | Write With Response | ✅ `WRITE_TYPE_DEFAULT` i `AndroidGattHandle` |
+| `createBond()` och väntan på `BOND_BONDED` | ✅ `GattSession` (timeout 60 s) och `AndroidGattConnector`, som tar emot `ACTION_BOND_STATE_CHANGED` |
+| Be användaren trycka på parkopplingsknappen | Saknas. Hör till fas 6. |
+| Upptäcka att noden har glömt telefonen | Saknas. Hör till fas 6. |
 | En GATT-operation i taget | ✅ `GattOperationQueue` |
 
 ## Öppna frågor 🔶
 
-Frågor som påverkar hur appen använder protokollet samlas i [`docs/open-questions.md`](open-questions.md). Det gäller parkoppling, token, protokollversioner, `autoConnect` och ordningen mellan Result och skrivbekräftelsen.
+Frågor som påverkar hur appen använder protokollet samlas i [`docs/open-questions.md`](open-questions.md). Det gäller parkoppling, token, protokollversioner, `autoConnect`, ordningen mellan Result och skrivbekräftelsen och hur appen ska hantera parkopplingsknappen och glömda parkopplingar.
