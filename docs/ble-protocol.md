@@ -2,7 +2,7 @@
 
 Det här dokumentet beskriver protokollet som TinkerTapHome använder för att prata med enheter som kör firmwaren **TinkerTapNode**. Det är underlaget för fas 6 i `docs/roadmap.md`.
 
-**Källa:** Arduino-repot `TinkerTapNode`, `main` vid commit `7632768`: filerna `config.h`, `protocol.h`, `bonds.cpp`, `TinkerTapNode.ino` och avsnittet om BLE-arkitektur i repots CLAUDE.md. Det gäller firmwareversion `0.4.0` och **protokollversion 3**.
+**Källa:** Arduino-repot `TinkerTapNode`, `main` vid commit `7632768`: filerna `config.h`, `protocol.h`, `bonds.cpp`, `TinkerTapNode.ino` och avsnittet om BLE-arkitektur i repots CLAUDE.md, samt `docs/app-flow.md` (commit `55d40a4`), som beskriver anslutningsflödet från appens sida. Det gäller firmwareversion `0.4.0` och **protokollversion 3**.
 
 > **Status:** Protokoll 3 är mergat till `main` i Arduino-repot. Efter mergen har tre buggfixar tillkommit utan att protokollet eller firmwareversionen ändrats (se [Kända fel i ArduinoBLE](#kända-fel-i-arduinoble-rättade) och [Hur kommandon hanteras](#hur-kommandon-hanteras-kod)). Fixarna visar att parkopplingen har provats på kortet, men repot säger inte uttryckligen att hela flödet med appen är verifierat.
 >
@@ -47,6 +47,16 @@ Där firmwarens CLAUDE.md och dess kod skiljer sig gäller **koden**, eftersom d
 - Appen ska filtrera skanningen på **service-UUID:t**, inte på namnet. Namnet är bara till för att visa och skilja noder åt för användaren. Det är BLE-adressen som identifierar en nod.
 - Noden **slutar annonsera** när en central ansluter och börjar igen när den kopplar från. Så länge appen är ansluten syns noden alltså inte för andra telefoner, och de kan inte ansluta.
 - Noden kopplar själv ner en central som inte autentiserar sig i tid eller som skickar fel token (se [Autentisering](#autentisering-auth)), så att en främmande anslutning inte kan blockera appen.
+- Enligt `app-flow.md` har noden en **fast adress**, till exempel `90:70:69:2C:3B:05`. Appen sparar den efter första anslutningen och använder den för att ansluta igen.
+- Namnet ligger i scan response och syns bara vid aktiv skanning. Det är standard på Android.
+
+### Fel vid anslutning
+
+| Situation | Orsak | Appen ska |
+|---|---|---|
+| `onConnectionStateChange` med status `133` | Vanligt, tillfälligt fel i Androids BLE-stack | Anropa `close()` och försöka igen efter 1–2 s |
+| Noden syns inte vid skanning | En annan central är ansluten, eller noden saknar ström | Vänta och försöka igen. En främmande central som inte autentiserar sig kopplas ner efter `ato`. |
+| Karakteristiker saknas eller är gamla efter en firmwareuppdatering | Android sparar en kopia av tjänstelistan per parkopplad enhet | Be användaren ta bort noden i Bluetooth-inställningarna och parkoppla igen. `app-flow.md` nämner också `BluetoothGatt.refresh()` via reflection, men det är ett dolt API som Android kan blockera, och appen ska inte använda det. |
 
 ## GATT-service och karakteristiker
 
@@ -97,6 +107,8 @@ Gäller när `pair` = `1` i Info. Det är standard i firmwaren (`PAIRING_REQUIRE
   - Är telefonen redan parkopplad, krypterar Android länken och skickar skrivningen igen.
   - Är den inte parkopplad, startar Android en parkoppling. Den lyckas bara om fönstret är öppet.
 - Enligt firmwarens CLAUDE.md håller ArduinoBLE kvar skrivningen och utför den när länken har krypterats. Hur det samspelar med Androids omsändning bör verifieras på en riktig enhet.
+- Med ett uttryckligt `createBond()` före första skrivningen får appen bättre kontroll och tydligare fel än om den låter Android starta parkopplingen själv. `app-flow.md` rekommenderar det, och fas 5-koden gör redan så.
+- Misslyckas krypteringen får appen `onCharacteristicWrite` med GATT-status **`5`** (`GATT_INSUFFICIENT_AUTHENTICATION`) eller **`15`** (`GATT_INSUFFICIENT_ENCRYPTION`). Det betyder att telefonen inte är parkopplad, eller att noden har glömt parkopplingen. Appen ska då be användaren ta bort noden i Bluetooth-inställningarna och parkoppla igen. Vilken av statuskoderna Android 16 ger bör verifieras på en riktig enhet.
 - Skrivningar med Write Without Response får inget felsvar och kan inte starta en parkoppling. Utan kryptering försvinner de tyst. Det är ytterligare ett skäl att alltid använda Write With Response.
 
 ### Kända fel i ArduinoBLE (rättade)
@@ -188,6 +200,7 @@ Firmwaren rekommenderar att kommandon skickas med **Write With Response**, ett i
 - Ett kommando är klart när skrivningen har bekräftats. Det senaste Result-värdet för samma opcode som kommit **efter** att skrivningen startade är svaret på kommandot.
 - Om skrivningen bekräftas utan att något Result har kommit har noden ignorerat kommandot eftersom nedkoppling pågår. Det ska behandlas som ett fel, och anslutningen bryts strax.
 - Write Without Response fungerar också, men då kan appen inte para ihop två likadana kommandon med sina svar, och utan kryptering försvinner skrivningen tyst. Appen ska inte använda det.
+- **I appen ska svaret ändå väntas in uttryckligen.** Även om `onCharacteristicChanged` kommer före `onCharacteristicWrite` levereras notifieringar i `GattSession` via ett eget flöde, och den som väntar på skrivningen kan återupptas innan Result har behandlats. Appen ska därför vänta på ett Result med samma opcode, och samma `deviceId` när det finns, med en kort timeout, innan nästa kommando skickas.
 - Att Result kommer före bekräftelsen bygger på hur ArduinoBLE och Androids BLE-stack beter sig. Det bör verifieras på en riktig enhet (se fråga 6 i [`docs/open-questions.md`](open-questions.md)).
 
 ### Exempel
@@ -288,6 +301,7 @@ Info är en JSON-sträng i UTF-8 som beskriver noden. Den skrivs vid uppstart oc
 - **Okända fält ska ignoreras.** Firmwaren lägger till nya fält utan att höja `proto`. Ändrad betydelse eller borttagna fält kräver ett nytt `proto`.
 - **Hårdkoda aldrig `deviceId`.** Id:t är ett index i firmwarens tabell och kan ändras mellan firmwareversioner. Appen bygger listan över utgångar från `dev` vid varje anslutning.
 - Strängen är högst **512 byte**, vilket är ATT-gränsen. Firmwaren kontrollerar redan vid kompilering att JSON:en ryms, så den kortas inte av. Appen ska ändå behandla ogiltig JSON som ett fel.
+- *(app-flow)* Vid återanslutning räcker det enligt `app-flow.md` att kontrollera att `fw` och `proto` är oförändrade. Eftersom Info ändå måste läsas för att få `fw` och `proto` är det enklast att alltid tolka hela Info. Då behöver ingenting sparas mellan anslutningarna och databasschemat behöver inte ändras.
 - Info är längre än 20 byte och läses med en lång läsning (Read Blob). Android sköter det automatiskt i `readCharacteristic`.
 - Antalet poster i `dev` ska vara lika med längden på State. Stämmer de inte överens ska appen behandla noden som felaktig och inte gissa vilket värde som hör till vilken utgång.
 - Ett okänt värde på `t` gör att den utgången inte kan styras. Appen får inte gissa typen.
@@ -329,10 +343,10 @@ Varje utgång har ett säkert värde (`safeValue`) i firmwaren. Det är oftast `
 
 ## Rekommenderat anslutningsflöde
 
-Flödet är hämtat från firmwarens CLAUDE.md och kompletterat med följderna ovan. **Steg 2–6 måste vara klara inom `ato` millisekunder** (standard 10 s), annars kopplar noden ner. Tiden står still medan parkopplingsfönstret är öppet.
+Flödet är hämtat från firmwarens CLAUDE.md och `docs/app-flow.md` och kompletterat med följderna ovan. **Steg 2–6 måste vara klara inom `ato` millisekunder** (standard 10 s), räknat från `STATE_CONNECTED`, annars kopplar noden ner. Tiden står still medan parkopplingsfönstret är öppet. Steg 3–6 bör därför köras automatiskt direkt efter anslutningen, utan att vänta på användaren.
 
 1. Skanna med filter på service-UUID:t `7d3c0000-…`. Noder skiljs åt med namnsuffixet eller BLE-adressen.
-2. Anslut. För noder som appen redan känner till rekommenderar firmwaren `autoConnect = true`, så att Android återansluter själv när noden kommer inom räckhåll igen. Kör sedan `requestMtu(247)` och `discoverServices()`.
+2. Anslut med `TRANSPORT_LE`. En ny nod ansluts med `autoConnect = false`. För noder som appen redan känner till rekommenderar firmwaren `autoConnect = true`, så att Android återansluter själv när noden kommer inom räckhåll igen, även efter lång tid. Vid status `133`: stäng och försök igen efter 1–2 s. Kör sedan `requestMtu(247)` och `discoverServices()`, och kontrollera att servicen och alla fyra karakteristiker finns.
 3. Läs **Info**. Kontrollera `proto` och bygg listan över utgångar.
 4. Slå på notifieringar för **Result** och **State** (CCCD), och läs State för att få utgångarnas aktuella värden.
 5. Om `pair` = `1` och telefonen inte är parkopplad med noden (`device.getBondState()`):
@@ -343,20 +357,27 @@ Flödet är hämtat från firmwarens CLAUDE.md och kompletterat med följderna o
    Är telefonen redan parkopplad krypterar Android länken automatiskt vid första skrivningen till Command.
 6. Om `auth` = `1`: skicka `AUTH` med Write With Response och vänta på Result med `20 FF 00`.
    - Vid `AUTH_FAILED` kopplar noden ner. Be då användaren om ett nytt token i stället för att försöka igen.
-   - Om krypteringen misslyckas trots att telefonen tror att den är parkopplad har noden glömt telefonen. Be användaren ta bort noden i Androids Bluetooth-inställningar och parkoppla igen.
+   - Om skrivningen får GATT-status `5` eller `15` är telefonen inte parkopplad, eller så har noden glömt den. Be användaren ta bort noden i Androids Bluetooth-inställningar och parkoppla igen (steg 5).
+   - Inloggningen gäller bara den här anslutningen. `AUTH` skickas igen vid varje ny anslutning.
 7. Om `hb` > 0: skicka `PING` regelbundet, till exempel var `hb / 3` millisekund, så länge anslutningen är uppe.
-8. Skicka kommandon med Write With Response, ett i taget, och läs svaret i Result. Alla GATT-operationer går genom kön i `:data`.
+8. Skicka kommandon med Write With Response, ett i taget, och vänta på svaret i Result innan nästa skickas. Alla GATT-operationer går genom kön i `:data`. Uppdatera gränssnittet från **State**, inte från det skickade värdet, eftersom noden begränsar värden till tillåtna intervall och State kan ändras utan att appen skickat något.
+
+Vid återanslutning behövs inte steg 5, eftersom parkopplingen finns kvar även efter att noden startats om.
 
 ### Jämfört med appen i dag (fas 5)
 
 | Rekommendation | `:data` i dag |
 |---|---|
-| `autoConnect = true` för kända noder | `connectGatt(…, autoConnect = false, …)` i `AndroidGattConnector` |
+| `autoConnect = true` för kända noder | `connectGatt(…, autoConnect = false, …)` i `AndroidGattConnector`. `GattSession.CONNECT_TIMEOUT` (15 s) passar inte med `autoConnect = true`, där Android kan vänta hur länge som helst. |
+| Steg 3–6 inom `ato` | Saknas. Detaljskärmen ansluter men gör sedan ingenting, så en nod med `auth` = `1` kopplar ner efter 10 s och appen visar `ConnectionLost`. Varje operation har dessutom en timeout på 10 s (`OPERATION_TIMEOUT`), lika lång som hela budgeten. |
+| Omförsök vid status `133` | Saknas. Visas som `ConnectFailed(133)`. |
 | `requestMtu(247)` | MTU begärs inte. Det fungerar med standard-MTU, men Info läses då i fler paket. |
 | Write With Response | ✅ `WRITE_TYPE_DEFAULT` i `AndroidGattHandle` |
 | `createBond()` och väntan på `BOND_BONDED` | ✅ `GattSession` (timeout 60 s) och `AndroidGattConnector`, som tar emot `ACTION_BOND_STATE_CHANGED` |
-| Be användaren trycka på parkopplingsknappen | Saknas. Hör till fas 6. |
-| Upptäcka att noden har glömt telefonen | Saknas. Hör till fas 6. |
+| Be användaren trycka på parkopplingsknappen | Saknas. `GattSession.connect()` parkopplar direkt efter anslutningen, så för en ny nod med stängt fönster blir resultatet bara `BondFailed`. |
+| Upptäcka att noden har glömt telefonen | Saknas. Status `5` och `15` blir `OperationFailed(status)` utan egen betydelse. |
+| Vänta på Result efter en skrivning | Saknas. `write()` returnerar när skrivningen har bekräftats. |
+| Filter på service-UUID vid skanning | Skanningen saknar filter med flit, eftersom appen också ska hitta andra enheter. UUID:t i reklampaketet läses inte, så TinkerTapNode känns inte igen i skanningslistan. |
 | En GATT-operation i taget | ✅ `GattOperationQueue` |
 
 ## Öppna frågor 🔶
