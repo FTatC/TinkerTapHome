@@ -370,13 +370,13 @@ Vid återanslutning behövs inte steg 5, eftersom parkopplingen finns kvar även
 |---|---|
 | `autoConnect = true` för kända noder | `connectGatt(…, autoConnect = false, …)` i `AndroidGattConnector`. `GattSession.CONNECT_TIMEOUT` (15 s) passar inte med `autoConnect = true`, där Android kan vänta hur länge som helst. |
 | Steg 3–6 inom `ato` | Saknas. Detaljskärmen ansluter men gör sedan ingenting, så en nod med `auth` = `1` kopplar ner efter 10 s och appen visar `ConnectionLost`. Varje operation har dessutom en timeout på 10 s (`OPERATION_TIMEOUT`), lika lång som hela budgeten. |
-| Omförsök vid status `133` | Saknas. Visas som `ConnectFailed(133)`. |
-| `requestMtu(247)` | MTU begärs inte. Det fungerar med standard-MTU, men Info läses då i fler paket. |
+| Omförsök vid status `133` | ✅ `GattSession` stänger och försöker igen efter 1,5 s, högst två gånger (`CONNECT_RETRIES`). |
+| `requestMtu(247)` | ✅ `GattSession` begär MTU 247 efter parkopplingen och före `discoverServices()`. Ett avslag eller en lägre MTU är inget fel. |
 | Write With Response | ✅ `WRITE_TYPE_DEFAULT` i `AndroidGattHandle` |
 | `createBond()` och väntan på `BOND_BONDED` | ✅ `GattSession` (timeout 60 s) och `AndroidGattConnector`, som tar emot `ACTION_BOND_STATE_CHANGED` |
 | Be användaren trycka på parkopplingsknappen | Saknas. `GattSession.connect()` parkopplar direkt efter anslutningen, så för en ny nod med stängt fönster blir resultatet bara `BondFailed`. |
-| Upptäcka att noden har glömt telefonen | Saknas. Status `5` och `15` blir `OperationFailed(status)` utan egen betydelse. |
-| Vänta på Result efter en skrivning | Saknas. `write()` returnerar när skrivningen har bekräftats. |
+| Upptäcka att noden har glömt telefonen | ✅ Status `5` och `15` blir `ConnectionError.PairingMissing`, som visas med en infotext om att parkoppla igen. |
+| Vänta på Result efter en skrivning | ✅ `DeviceConnection.writeAndAwaitReply()` lyssnar efter svaret innan skrivningen startar och väntar högst 2 s efter bekräftelsen (`REPLY_TIMEOUT`). Kommer inget svar stängs anslutningen med `ConnectionError.NoReply`. |
 | Filter på service-UUID vid skanning | Skanningen saknar filter med flit, eftersom appen också ska hitta andra enheter. UUID:t i reklampaketet läses inte, så TinkerTapNode känns inte igen i skanningslistan. |
 | En GATT-operation i taget | ✅ `GattOperationQueue` |
 

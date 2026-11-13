@@ -24,12 +24,22 @@ sealed interface ConnectionError {
     /** Parkopplingen misslyckades eller avbröts av användaren. */
     data object BondFailed : ConnectionError
 
+    /**
+     * Enheten kräver en krypterad länk, men telefonen är inte parkopplad med den, eller så har
+     * enheten glömt parkopplingen. Användaren måste ta bort enheten i Bluetooth-inställningarna och
+     * parkoppla igen, eftersom appen inte kan ta bort en parkoppling själv.
+     */
+    data object PairingMissing : ConnectionError
+
+    /** Enheten bekräftade skrivningen men skickade inget svar. Anslutningen har stängts. */
+    data object NoReply : ConnectionError
+
     /** Enheten har inte den tjänst eller characteristic som efterfrågades. */
     data class CharacteristicNotFound(val characteristic: CharacteristicId) : ConnectionError
 
     /** Android vägrade starta operationen, till exempel för att Bluetooth-stacken var upptagen. */
     data object RequestRejected : ConnectionError
 
-    /** Enheten svarade med ett fel. [status] är GATT-statusen, till exempel 5 för otillräcklig autentisering. */
+    /** Enheten svarade med ett fel. [status] är GATT-statusen, till exempel 3 när skrivning inte är tillåten. */
     data class OperationFailed(val status: Int) : ConnectionError
 }

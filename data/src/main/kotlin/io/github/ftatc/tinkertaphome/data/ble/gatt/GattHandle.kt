@@ -19,6 +19,9 @@ internal interface GattHandle {
 
     fun createBond(): GattRequest
 
+    /** Ber om en större MTU. Svaret kommer som [GattEvent.MtuChanged]. */
+    fun requestMtu(mtu: Int): GattRequest
+
     fun read(characteristic: CharacteristicId): GattRequest
 
     fun write(characteristic: CharacteristicId, value: ByteArray): GattRequest

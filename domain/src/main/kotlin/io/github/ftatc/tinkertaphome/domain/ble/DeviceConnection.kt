@@ -39,6 +39,22 @@ interface DeviceConnection {
     ): Outcome<Unit, ConnectionError>
 
     /**
+     * Skriver [value] till [characteristic] och väntar på enhetens svar: den första notifieringen från
+     * [reply] som [isReply] godtar och som kommer efter att skrivningen har startat.
+     *
+     * Notifieringarna för [reply] måste redan vara påslagna med [observeNotifications]. Ingen annan
+     * operation mot enheten körs innan svaret har kommit. Kommer inget svar strax efter att
+     * skrivningen har bekräftats stängs anslutningen och [ConnectionError.NoReply] returneras.
+     */
+    suspend fun writeAndAwaitReply(
+        address: BleAddress,
+        characteristic: CharacteristicId,
+        value: ByteArray,
+        reply: CharacteristicId,
+        isReply: (ByteArray) -> Boolean,
+    ): Outcome<ByteArray, ConnectionError>
+
+    /**
      * Slår på notifieringar för [characteristic] när flödet samlas in och skickar varje nytt värde.
      * Notifieringarna slås av när insamlingen avbryts.
      *

@@ -37,6 +37,9 @@ internal class FakeGattConnector : GattConnector {
     lateinit var handle: FakeGattHandle
         private set
 
+    /** Alla anslutningar som har startats, i ordning. [handle] är den senaste. */
+    val handles = mutableListOf<FakeGattHandle>()
+
     private var listener: ((GattEvent) -> Unit)? = null
 
     override fun isBluetoothEnabled(): Boolean = bluetoothEnabled
@@ -45,6 +48,7 @@ internal class FakeGattConnector : GattConnector {
         connectCount++
         refuseWith?.let { return it }
         handle = FakeGattHandle(this)
+        handles += handle
         listener = onEvent
         connectResponse?.let(::emit)
         return GattConnectStart.Started(handle)
@@ -65,6 +69,7 @@ internal class FakeGattConnector : GattConnector {
     fun successFor(request: FakeRequest): GattEvent = when (request) {
         FakeRequest.DiscoverServices -> GattEvent.ServicesDiscovered(GATT_SUCCESS)
         FakeRequest.CreateBond -> GattEvent.BondChanged(BondState.BONDED)
+        is FakeRequest.RequestMtu -> GattEvent.MtuChanged(request.mtu, GATT_SUCCESS)
         is FakeRequest.Read -> GattEvent.CharacteristicRead(request.characteristic, GATT_SUCCESS, readValue)
         is FakeRequest.Write -> GattEvent.CharacteristicWritten(request.characteristic, GATT_SUCCESS)
         is FakeRequest.SetNotifications -> GattEvent.NotificationsChanged(request.characteristic, GATT_SUCCESS)
@@ -81,6 +86,8 @@ internal class FakeGattHandle(private val connector: FakeGattConnector) : GattHa
     override fun isBonded(): Boolean = connector.bonded
 
     override fun createBond(): GattRequest = connector.start(FakeRequest.CreateBond)
+
+    override fun requestMtu(mtu: Int): GattRequest = connector.start(FakeRequest.RequestMtu(mtu))
 
     override fun read(characteristic: CharacteristicId): GattRequest = connector.start(FakeRequest.Read(characteristic))
 
@@ -99,6 +106,7 @@ internal class FakeGattHandle(private val connector: FakeGattConnector) : GattHa
 internal sealed interface FakeRequest {
     data object DiscoverServices : FakeRequest
     data object CreateBond : FakeRequest
+    data class RequestMtu(val mtu: Int) : FakeRequest
     data class Read(val characteristic: CharacteristicId) : FakeRequest
     data class Write(val characteristic: CharacteristicId, val value: List<Byte>) : FakeRequest
     data class SetNotifications(val characteristic: CharacteristicId, val enabled: Boolean) : FakeRequest

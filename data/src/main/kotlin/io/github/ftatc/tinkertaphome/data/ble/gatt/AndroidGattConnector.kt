@@ -72,6 +72,10 @@ private class GattCallback(private val onEvent: (GattEvent) -> Unit) : Bluetooth
         onEvent(GattEvent.ServicesDiscovered(status))
     }
 
+    override fun onMtuChanged(gatt: BluetoothGatt, mtu: Int, status: Int) {
+        onEvent(GattEvent.MtuChanged(mtu, status))
+    }
+
     override fun onCharacteristicRead(
         gatt: BluetoothGatt,
         characteristic: BluetoothGattCharacteristic,

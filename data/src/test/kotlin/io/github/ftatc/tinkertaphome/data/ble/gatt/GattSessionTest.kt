@@ -35,11 +35,11 @@ class GattSessionTest {
     // Anslutning
 
     @Test
-    fun `connects and discovers services when the device is already bonded`() = runTest {
+    fun `connects, asks for a larger mtu and discovers services when the device is already bonded`() = runTest {
         assertEquals(Outcome.Success(Unit), session.connect())
 
         assertEquals(ConnectionState.Connected, session.state.value)
-        assertEquals(listOf(FakeRequest.DiscoverServices), connector.requests)
+        assertEquals(listOf(FakeRequest.RequestMtu(GattSession.MTU), FakeRequest.DiscoverServices), connector.requests)
     }
 
     @Test
@@ -48,7 +48,10 @@ class GattSessionTest {
 
         assertEquals(Outcome.Success(Unit), session.connect())
 
-        assertEquals(listOf(FakeRequest.CreateBond, FakeRequest.DiscoverServices), connector.requests)
+        assertEquals(
+            listOf(FakeRequest.CreateBond, FakeRequest.RequestMtu(GattSession.MTU), FakeRequest.DiscoverServices),
+            connector.requests,
+        )
     }
 
     @Test
@@ -75,12 +78,79 @@ class GattSessionTest {
 
     @Test
     fun `fails with the gatt status and closes when the connection cannot be made`() = runTest {
-        connector.connectResponse = GattEvent.ConnectionChanged(status = 133, connected = false)
+        connector.connectResponse = GattEvent.ConnectionChanged(status = 62, connected = false)
 
-        assertEquals(failure(ConnectionError.ConnectFailed(133)), session.connect())
+        assertEquals(failure(ConnectionError.ConnectFailed(62)), session.connect())
 
-        assertEquals(ConnectionState.Failed(ConnectionError.ConnectFailed(133)), session.state.value)
+        assertEquals(ConnectionState.Failed(ConnectionError.ConnectFailed(62)), session.state.value)
         assertTrue(connector.handle.closed)
+        assertEquals(1, connector.connectCount)
+    }
+
+    @Test
+    fun `tries again after a pause when android reports gatt error 133`() = runTest {
+        connector.connectResponse = GattEvent.ConnectionChanged(status = GATT_ERROR, connected = false)
+        val result = async { session.connect() }
+        runCurrent()
+
+        assertEquals(1, connector.connectCount)
+        assertTrue(connector.handles.first().closed)
+        assertEquals(ConnectionState.Connecting, session.state.value)
+
+        connector.connectResponse = GattEvent.ConnectionChanged(GATT_SUCCESS, connected = true)
+        advanceTimeBy(GattSession.CONNECT_RETRY_DELAY + 1.seconds)
+
+        assertEquals(Outcome.Success(Unit), result.await())
+        assertEquals(2, connector.connectCount)
+    }
+
+    @Test
+    fun `gives up when gatt error 133 keeps coming`() = runTest {
+        connector.connectResponse = GattEvent.ConnectionChanged(status = GATT_ERROR, connected = false)
+
+        assertEquals(failure(ConnectionError.ConnectFailed(GATT_ERROR)), session.connect())
+
+        assertEquals(1 + GattSession.CONNECT_RETRIES, connector.connectCount)
+        assertEquals(ConnectionState.Failed(ConnectionError.ConnectFailed(GATT_ERROR)), session.state.value)
+        assertTrue(connector.handles.all { it.closed })
+    }
+
+    @Test
+    fun `does not try again when disconnected during the pause`() = runTest {
+        connector.connectResponse = GattEvent.ConnectionChanged(status = GATT_ERROR, connected = false)
+        val result = async { session.connect() }
+        runCurrent()
+
+        session.disconnect()
+        advanceTimeBy(GattSession.CONNECT_RETRY_DELAY + 1.seconds)
+
+        assertEquals(failure(ConnectionError.NotConnected), result.await())
+        assertEquals(1, connector.connectCount)
+        assertEquals(ConnectionState.Disconnected, session.state.value)
+    }
+
+    @Test
+    fun `cancelling a connect during the pause reports disconnected`() = runTest {
+        connector.connectResponse = GattEvent.ConnectionChanged(status = GATT_ERROR, connected = false)
+        val result = async { session.connect() }
+        runCurrent()
+
+        result.cancel()
+        runCurrent()
+
+        assertEquals(ConnectionState.Disconnected, session.state.value)
+        assertEquals(1, connector.connectCount)
+    }
+
+    @Test
+    fun `continues when the mtu request is refused or a lower mtu is given`() = runTest {
+        connector.requestResult = { if (it is FakeRequest.RequestMtu) GattRequest.REJECTED else GattRequest.STARTED }
+        assertEquals(Outcome.Success(Unit), session.connect())
+        session.disconnect()
+
+        connector.requestResult = { GattRequest.STARTED }
+        connector.respond = { if (it is FakeRequest.RequestMtu) GattEvent.MtuChanged(mtu = 23, status = 4) else connector.successFor(it) }
+        assertEquals(Outcome.Success(Unit), session.connect())
     }
 
     @Test
@@ -140,7 +210,9 @@ class GattSessionTest {
 
     @Test
     fun `fails with the gatt status when service discovery fails`() = runTest {
-        connector.respond = { GattEvent.ServicesDiscovered(status = 129) }
+        connector.respond = { request ->
+            if (request == FakeRequest.DiscoverServices) GattEvent.ServicesDiscovered(status = 129) else connector.successFor(request)
+        }
 
         assertEquals(failure(ConnectionError.OperationFailed(129)), session.connect())
         assertTrue(connector.handle.closed)
@@ -191,7 +263,7 @@ class GattSessionTest {
 
     @Test
     fun `can connect again after a failure`() = runTest {
-        connector.connectResponse = GattEvent.ConnectionChanged(status = 133, connected = false)
+        connector.connectResponse = GattEvent.ConnectionChanged(status = 62, connected = false)
         session.connect()
         connector.connectResponse = GattEvent.ConnectionChanged(GATT_SUCCESS, connected = true)
 
@@ -217,9 +289,21 @@ class GattSessionTest {
     @Test
     fun `read fails with the gatt status from the device`() = runTest {
         connected()
-        connector.respond = { GattEvent.CharacteristicRead(lamp, status = 5, value = byteArrayOf()) }
+        connector.respond = { GattEvent.CharacteristicRead(lamp, status = 2, value = byteArrayOf()) }
 
-        assertEquals(failure(ConnectionError.OperationFailed(5)), session.read(lamp))
+        assertEquals(failure(ConnectionError.OperationFailed(2)), session.read(lamp))
+        assertEquals(ConnectionState.Connected, session.state.value)
+    }
+
+    @Test
+    fun `reports missing pairing when the device requires authentication or encryption`() = runTest {
+        connected()
+
+        connector.respond = { GattEvent.CharacteristicRead(lamp, status = GATT_INSUFFICIENT_AUTHENTICATION, value = byteArrayOf()) }
+        assertEquals(failure(ConnectionError.PairingMissing), session.read(lamp))
+
+        connector.respond = { GattEvent.CharacteristicWritten(lamp, status = GATT_INSUFFICIENT_ENCRYPTION) }
+        assertEquals(failure(ConnectionError.PairingMissing), session.write(lamp, byteArrayOf(1)))
         assertEquals(ConnectionState.Connected, session.state.value)
     }
 

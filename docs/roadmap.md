@@ -215,7 +215,8 @@ Underlag: `docs/ble-protocol.md` (protokollversion 3, firmware TinkerTapNode `0.
 - ✅ **Token** (fråga 2 och 3): tokenet anges när noden sparas, förifyllt med `tinker`, och noden sparas först när `AUTH` har lyckats. Det sparas per nod i Room utan kryptering. Efter `AUTH_FAILED` försöker appen inte igen automatiskt. Detaljvyn ber om ett nytt token.
 - ✅ **Anslutning** (fråga 5): sparade noder ansluts med `autoConnect = true` medan appen syns, och alla noder kopplas ner när appen går till bakgrunden. Appen begär `requestMtu(247)`.
 - ✅ **Info-JSON:** tolkas med `kotlinx-serialization-json` (samma version som `kotlinx-serialization-core`) och `ignoreUnknownKeys = true`. Biblioteket och pluginet `kotlin-serialization` läggs till i `:data` i steg 6.1, och `gradle/verification-metadata.xml` uppdateras i samma ändring.
-- 🔶 **Bestäms under arbetet:** hur en sparad nod parkopplas igen (spara-flödet ger `AlreadySaved`), och hur länge appen väntar på Result efter en skrivning.
+- 🔶 **Bestäms under arbetet:** hur en sparad nod parkopplas igen (spara-flödet ger `AlreadySaved`).
+- ✅ **Väntan på Result** (steg 6.2): högst 2 s efter att skrivningen har bekräftats (`GattSession.REPLY_TIMEOUT`). Noden skickar Result före bekräftelsen, så tiden är bara marginal. Kommer inget svar stängs anslutningen med `ConnectionError.NoReply`.
 - 🔶 **Verifieras på hårdvara under fasen:** fråga 1 (parkopplingen med Android 16) och fråga 6 (ordningen mellan Result och skrivbekräftelsen).
 
 ### Steg

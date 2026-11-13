@@ -27,6 +27,8 @@ fun connectionErrorMessage(error: ConnectionError): String = when (error) {
     ConnectionError.ConnectionLost -> stringResource(R.string.connection_error_lost)
     is ConnectionError.ConnectFailed -> stringResource(R.string.connection_error_connect_failed, error.status)
     ConnectionError.BondFailed -> stringResource(R.string.connection_error_bond_failed)
+    ConnectionError.PairingMissing -> stringResource(R.string.connection_error_pairing_missing)
+    ConnectionError.NoReply -> stringResource(R.string.connection_error_no_reply)
     is ConnectionError.CharacteristicNotFound -> stringResource(R.string.connection_error_characteristic_not_found)
     ConnectionError.RequestRejected -> stringResource(R.string.connection_error_rejected)
     is ConnectionError.OperationFailed -> stringResource(R.string.connection_error_operation_failed, error.status)

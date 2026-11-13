@@ -49,6 +49,15 @@ internal class AndroidGattHandle(
         }
     }
 
+    override fun requestMtu(mtu: Int): GattRequest {
+        if (closed) return GattRequest.REJECTED
+        return try {
+            gatt.requestMtu(mtu).toRequest()
+        } catch (_: SecurityException) {
+            GattRequest.PERMISSION_DENIED
+        }
+    }
+
     override fun read(characteristic: CharacteristicId): GattRequest =
         withCharacteristic(characteristic) { found ->
             try {

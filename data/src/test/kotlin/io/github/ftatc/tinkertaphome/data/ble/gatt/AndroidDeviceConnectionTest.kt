@@ -56,6 +56,24 @@ class AndroidDeviceConnectionTest {
     }
 
     @Test
+    fun `writes and returns the reply from the connected device`() = runTest {
+        connection.connect(lamp)
+        val reply = testCharacteristic(2)
+        connector.respond = { request ->
+            if (request is FakeRequest.Write) {
+                connector.emit(GattEvent.CharacteristicChanged(reply, byteArrayOf(7)))
+                GattEvent.CharacteristicWritten(request.characteristic, GATT_SUCCESS)
+            } else {
+                connector.successFor(request)
+            }
+        }
+
+        val result = connection.writeAndAwaitReply(lamp, testCharacteristic(1), byteArrayOf(1), reply) { true }
+
+        assertArrayEquals(byteArrayOf(7), (result as Outcome.Success).value)
+    }
+
+    @Test
     fun `operations on a device that is not connected fail`() = runTest {
         connection.connect(lamp)
 
