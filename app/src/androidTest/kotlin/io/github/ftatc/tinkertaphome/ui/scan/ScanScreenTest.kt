@@ -17,6 +17,7 @@ import io.github.ftatc.tinkertaphome.domain.model.BleError
 import io.github.ftatc.tinkertaphome.domain.model.ScannedDevice
 import io.github.ftatc.tinkertaphome.domain.model.testScannedDevice
 import io.github.ftatc.tinkertaphome.domain.repository.FakeDeviceRepository
+import io.github.ftatc.tinkertaphome.domain.repository.FakeSettingsRepository
 import io.github.ftatc.tinkertaphome.domain.usecase.ScanForDevicesUseCase
 import io.github.ftatc.tinkertaphome.ui.theme.TinkerTapTheme
 import kotlinx.coroutines.runBlocking
@@ -36,7 +37,7 @@ class ScanScreenTest {
     val composeRule = createAndroidComposeRule<ComponentActivity>()
 
     private val scanner = FakeDeviceScanner()
-    private val viewModel = ScanViewModel(ScanForDevicesUseCase(scanner, FakeDeviceRepository()))
+    private val viewModel = ScanViewModel(ScanForDevicesUseCase(scanner, FakeDeviceRepository(), FakeSettingsRepository()))
     private var clickedDevice: ScannedDevice? = null
 
     private fun string(id: Int) = composeRule.activity.getString(id)
