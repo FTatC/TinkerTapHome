@@ -1,0 +1,48 @@
+# CI för TinkerTapHome (steg 7.1 i docs/roadmap.md).
+#
+# Kör samma Gradle-uppgifter som ska vara gröna lokalt före en commit. Instrumenterade tester
+# (connectedAndroidTest) körs inte här, eftersom de kräver en emulator eller telefon. De körs
+# fortsatt lokalt enligt CLAUDE.md.
+#
+# Beroendeverifieringen i gradle/verification-metadata.xml är påslagen precis som lokalt.
+# Varje Action är låst till en commit-SHA, så att en flyttad tagg inte kan byta ut koden som körs.
+# Kommentaren efter SHA:n visar vilken version det är.
+
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Test, lint and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      # Cachar Gradle och kontrollerar att gradle-wrapper.jar är en äkta Gradle-wrapper.
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+
+      - name: Test, lint and build
+        run: ./gradlew test lint assembleDebug assembleDebugAndroidTest --stacktrace

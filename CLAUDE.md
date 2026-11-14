@@ -93,6 +93,7 @@ Nya moduler använder ett av pluginsen. Kopiera inte `compileSdk`, `minSdk`, `co
   - **Alltid:** `./gradlew test` (JVM-enhetstester: ViewModels, use cases, repositories med fakes).
   - **Dessutom `./gradlew connectedAndroidTest`** när ändringen rör Composables, navigation, Room-DAO:er eller migreringar, eller annan kod vars tester ligger i `androidTest`. Compose UI-tester och `MigrationTestHelper` är instrumenterade och körs **inte** av `./gradlew test`.
   - Finns ingen enhet eller emulator tillgänglig: säg uttryckligen att de instrumenterade testerna inte har körts. Påstå inte att ändringen är verifierad.
+  - **CI** (`.github/workflows/ci.yml`) kör `./gradlew test lint assembleDebug assembleDebugAndroidTest` på varje PR mot `main` och kräver att jobbet är grönt innan merge. CI kör **inte** `connectedAndroidTest`. En grön CI ersätter därför inte de instrumenterade testerna lokalt.
 
 ### Databas (Room)
 - **Schemat exporteras från första versionen.** `@Database(exportSchema = true)` och Room-pluginens `room { schemaDirectory("$projectDir/schemas") }` i `data/build.gradle.kts`. Katalogen `data/schemas/` checkas in. Den räknas inte som en genererad fil som ska ignoreras.
