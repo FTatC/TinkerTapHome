@@ -5,6 +5,7 @@ import io.github.ftatc.tinkertaphome.domain.flatMap
 import io.github.ftatc.tinkertaphome.domain.model.CharacteristicId
 import io.github.ftatc.tinkertaphome.domain.model.ConnectionError
 import io.github.ftatc.tinkertaphome.domain.model.ConnectionState
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Duration
@@ -53,6 +54,9 @@ internal class GattSession(
     /** Väntar på svaret på en skrivning i [writeAndAwaitReply], eller `null`. */
     private val pendingReply = AtomicReference<PendingReply?>(null)
 
+    /** Characteristics som har notifieringar påslagna på den nuvarande anslutningen. */
+    private val notifying: MutableSet<CharacteristicId> = ConcurrentHashMap.newKeySet()
+
     /**
      * Ansluter till en enhet som inte behöver vara parkopplad, parkopplar vid behov, ber om en större
      * MTU och söker efter tjänster. Ger upp efter [CONNECT_TIMEOUT] om enheten inte svarar. Se
@@ -84,6 +88,8 @@ internal class GattSession(
         if (_state.value == ConnectionState.Connected) return@withLock Outcome.Success(Unit)
         if (mode == OpenMode.KNOWN && !connector.isBonded(address)) return@withLock reportUnavailable(ConnectionError.PairingMissing)
         _state.value = if (mode.autoConnect) ConnectionState.Waiting else ConnectionState.Connecting
+        // Enheten glömmer notifieringarna när anslutningen bryts.
+        notifying.clear()
         val result = openConnectionWithRetry(mode)
             .flatMap { markResponding(); if (mode == OpenMode.PAIR) bondIfNeeded() else Outcome.Success(Unit) }
             .flatMap { requestMtu() }
@@ -119,15 +125,21 @@ internal class GattSession(
         reply: CharacteristicId,
         isReply: (ByteArray) -> Boolean,
     ): GattOutcome<ByteArray> = whenConnected {
-        // Registreras innan skrivningen startar, eftersom svaret kan komma innan skrivningen bekräftas.
-        val waiting = PendingReply(reply, isReply)
-        pendingReply.set(waiting)
-        try {
-            startWrite(characteristic, value).flatMap { awaitReply(waiting) }
-        } finally {
-            pendingReply.compareAndSet(waiting, null)
+        ensureNotifications(reply).flatMap {
+            // Registreras innan skrivningen startar, eftersom svaret kan komma innan skrivningen bekräftas.
+            val waiting = PendingReply(reply, isReply)
+            pendingReply.set(waiting)
+            try {
+                startWrite(characteristic, value).flatMap { awaitReply(waiting) }
+            } finally {
+                pendingReply.compareAndSet(waiting, null)
+            }
         }
     }
+
+    /** Slår på notifieringar för [characteristic] om de inte redan är på. Måste anropas inom kön. */
+    private suspend fun ensureNotifications(characteristic: CharacteristicId): GattOutcome<Unit> =
+        if (characteristic in notifying) Outcome.Success(Unit) else startSetNotifications(characteristic, enabled = true)
 
     /** Se [io.github.ftatc.tinkertaphome.domain.ble.DeviceConnection.observeNotifications]. */
     fun notifications(characteristic: CharacteristicId): Flow<GattOutcome<ByteArray>> = channelFlow {
@@ -236,11 +248,23 @@ internal class GattSession(
         }
 
     private suspend fun setNotifications(characteristic: CharacteristicId, enabled: Boolean): GattOutcome<Unit> =
-        operation(start = { it.setNotifications(characteristic, enabled).toError(characteristic) }) { event ->
+        whenConnected { startSetNotifications(characteristic, enabled) }
+
+    /** Slår på eller av notifieringar och kommer ihåg det. Måste anropas inom kön. */
+    private suspend fun startSetNotifications(characteristic: CharacteristicId, enabled: Boolean): GattOutcome<Unit> {
+        val result = queue.await(
+            OPERATION_TIMEOUT,
+            start = handleRequest { it.setNotifications(characteristic, enabled).toError(characteristic) },
+        ) { event ->
             (event as? GattEvent.NotificationsChanged)
                 ?.takeIf { it.characteristic == characteristic }
                 ?.status?.toOutcome()
         }
+        if (result is Outcome.Success) {
+            if (enabled) notifying += characteristic else notifying -= characteristic
+        }
+        return result
+    }
 
     private suspend fun turnOffNotificationsIfConnected(characteristic: CharacteristicId) {
         if (_state.value == ConnectionState.Connected) setNotifications(characteristic, enabled = false)

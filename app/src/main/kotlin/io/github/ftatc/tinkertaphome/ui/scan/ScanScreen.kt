@@ -119,14 +119,21 @@ private fun errorMessage(error: BleError): String = when (error) {
 private fun FoundDevices(devices: List<ScannedDevice>, onDeviceClick: (ScannedDevice) -> Unit) {
     LazyColumn {
         items(devices, key = { it.address.value }) { device ->
+            // Bara TinkerTapNode kan sparas (beslut i docs/roadmap.md, fas 6). Andra enheter visas men går inte att välja.
             ListItem(
-                modifier = Modifier.clickable { onDeviceClick(device) },
+                modifier = Modifier.clickable(enabled = device.isTinkerTapNode) { onDeviceClick(device) },
                 headlineContent = { Text(device.name ?: stringResource(R.string.scan_unknown_device)) },
-                supportingContent = { Text(device.address.value) },
+                supportingContent = { DeviceDescription(device) },
                 trailingContent = { Text(stringResource(R.string.scan_rssi, device.rssi)) },
             )
         }
     }
+}
+
+@Composable
+private fun DeviceDescription(device: ScannedDevice) {
+    val address = device.address.value
+    Text(if (device.isTinkerTapNode) address else stringResource(R.string.scan_not_supported, address))
 }
 
 @Composable
@@ -143,7 +150,7 @@ private fun ScanContentPreview() {
         ScanContent(
             uiState = ScanUiState(
                 devices = listOf(
-                    ScannedDevice(checkNotNull(BleAddress.parse("AA:BB:CC:DD:EE:01")), "Lampa", -48),
+                    ScannedDevice(checkNotNull(BleAddress.parse("AA:BB:CC:DD:EE:01")), "TinkerTapNode-EE01", -48, isTinkerTapNode = true),
                     ScannedDevice(checkNotNull(BleAddress.parse("AA:BB:CC:DD:EE:02")), null, -71),
                 ),
                 isScanning = true,

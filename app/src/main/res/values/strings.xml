@@ -29,6 +29,25 @@
     </plurals>
     <string name="save_device_error_already_saved">This device is already saved</string>
     <string name="save_device_error_storage">Couldn\'t save the device</string>
+    <string name="scan_not_supported">%1$s · Not supported</string>
+    <string name="save_node_press_button">Press the pairing button on the device. The light matrix shows a blinking Bluetooth symbol. Then tap Pair within 30 seconds.</string>
+    <string name="save_node_already_paired">If this phone is already paired with the device, you don\'t need to press the button.</string>
+    <string name="save_node_pair">Pair</string>
+    <string name="save_node_pairing">Pairing… Accept the pairing if Android asks.</string>
+    <string name="save_node_token_label">Token</string>
+    <string name="save_node_token_hint">The default token is tinker</string>
+    <string name="save_node_error_bond_failed">Pairing failed. Press the pairing button on the device and try again within 30 seconds.</string>
+    <string name="save_node_error_token_invalid">Use letters, digits or common symbols, at most %1$d</string>
+    <string name="node_error_invalid_info">The device sent information the app doesn\'t understand.</string>
+    <string name="node_error_node_too_old">The device runs firmware that is too old. Update the device.</string>
+    <string name="node_error_node_too_old_version">The device runs an older protocol (version %1$d). Update the device.</string>
+    <string name="node_error_app_too_old">The device needs a newer version of the app (protocol %1$d).</string>
+    <string name="node_error_state_mismatch">The outputs of the device don\'t match its description.</string>
+    <string name="node_error_auth_failed">Wrong token. Check the token and try again.</string>
+    <string name="node_error_not_authorized">The device needs a token.</string>
+    <string name="node_error_invalid_output">The output no longer exists on the device.</string>
+    <string name="node_error_rejected">The device rejected the command.</string>
+    <string name="node_error_unknown_status">The device answered with an unknown error (%1$d).</string>
     <string name="permission_ble_title">Bluetooth access needed</string>
     <string name="permission_ble_rationale">TinkerTap Home finds and controls your devices over Bluetooth. Your location is never used.</string>
     <string name="permission_ble_rationale_denied">Without Bluetooth access the app can\'t find or control any devices.</string>

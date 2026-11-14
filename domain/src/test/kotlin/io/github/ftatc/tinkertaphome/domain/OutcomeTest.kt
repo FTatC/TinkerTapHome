@@ -68,4 +68,18 @@ class OutcomeTest {
 
         assertEquals(listOf(Outcome.Failure("fel")), endless.takeUntilFailure().toList())
     }
+
+    @Test
+    fun `mapError transforms the error of a failure`() {
+        val outcome: Outcome<Int, String> = Outcome.Failure("fel")
+
+        assertEquals(Outcome.Failure(3), outcome.mapError { it.length })
+    }
+
+    @Test
+    fun `mapError leaves a success unchanged and does not call transform`() {
+        val outcome: Outcome<Int, String> = Outcome.Success(1)
+
+        assertEquals(Outcome.Success(1), outcome.mapError<Int, String, Int> { error("ska inte anropas") })
+    }
 }

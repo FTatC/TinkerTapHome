@@ -1,5 +1,6 @@
 package io.github.ftatc.tinkertaphome.data.ble
 
+import java.util.UUID
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -18,7 +19,13 @@ internal interface BleScanSource {
 /** En händelse från Androids skanner, med vanliga datatyper i stället för Android-klasser. */
 internal sealed interface RawScanEvent {
 
-    data class Result(val address: String, val name: String?, val rssi: Int) : RawScanEvent
+    /** [serviceUuids] är de tjänster som enheten annonserar i reklampaketet. */
+    data class Result(
+        val address: String,
+        val name: String?,
+        val rssi: Int,
+        val serviceUuids: List<UUID> = emptyList(),
+    ) : RawScanEvent
 
     /** Händelser som avslutar skanningen. Efter en sådan kommer inga fler händelser. */
     sealed interface Stopped : RawScanEvent

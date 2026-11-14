@@ -5,6 +5,7 @@ import io.github.ftatc.tinkertaphome.domain.model.DeviceNames
 import io.github.ftatc.tinkertaphome.domain.model.SaveDeviceError
 import io.github.ftatc.tinkertaphome.domain.model.testAddress
 import io.github.ftatc.tinkertaphome.domain.model.testDevice
+import io.github.ftatc.tinkertaphome.domain.node.AuthToken
 import io.github.ftatc.tinkertaphome.domain.repository.FakeDeviceRepository
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -80,5 +81,19 @@ class SaveDeviceUseCaseTest {
     @Test
     fun `a name of only hidden characters counts as missing`() = runTest {
         assertEquals(Outcome.Failure(SaveDeviceError.NameMissing), saveDevice(testAddress(1), "\u200B\u202E"))
+    }
+
+    @Test
+    fun `checks and cleans a name without saving`() {
+        assertEquals(Outcome.Success("Lampa"), saveDevice.checkName(" Lampa "))
+        assertEquals(Outcome.Failure(SaveDeviceError.NameMissing), saveDevice.checkName(" "))
+        assertTrue(repository.saveCalls.isEmpty())
+    }
+
+    @Test
+    fun `saves the token with the device`() = runTest {
+        saveDevice(testAddress(1), "Lampa", AuthToken.DEFAULT)
+
+        assertEquals(AuthToken.DEFAULT, repository.tokens[testAddress(1)])
     }
 }

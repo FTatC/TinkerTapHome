@@ -13,6 +13,7 @@ import io.github.ftatc.tinkertaphome.domain.model.ScannedDevice
 import io.github.ftatc.tinkertaphome.domain.model.testScannedDevice
 import io.github.ftatc.tinkertaphome.ui.theme.TinkerTapTheme
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -103,5 +104,16 @@ class ScanContentTest {
         composeRule.onNodeWithText("Lampa").performClick()
 
         assertEquals(device, clickedDevice)
+    }
+
+    @Test
+    fun aDeviceThatIsNotATinkerTapNodeIsShownButCannotBeChosen() {
+        val other = testScannedDevice(id = 2, name = "Klocka", isTinkerTapNode = false)
+        show(ScanUiState(devices = listOf(other)))
+
+        composeRule.onNodeWithText(string(R.string.scan_not_supported, other.address.value)).assertIsDisplayed()
+        composeRule.onNodeWithText("Klocka").performClick()
+
+        assertNull(clickedDevice)
     }
 }

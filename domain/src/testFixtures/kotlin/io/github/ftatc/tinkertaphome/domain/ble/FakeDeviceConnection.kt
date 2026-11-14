@@ -91,8 +91,20 @@ class FakeDeviceConnection : DeviceConnection {
         setState(address, ConnectionState.Disconnected)
     }
 
+    /** Det [read] returnerar per characteristic. Saknas värdet ges [ConnectionError.NotConnected]. */
+    val readResults: MutableMap<CharacteristicId, Outcome<ByteArray, ConnectionError>> = mutableMapOf()
+
+    /**
+     * Enhetens svar på varje skrivning i [writeAndAwaitReply], eller `null` för [ConnectionError.NotConnected].
+     * Ett svar som anroparens `isReply` inte godtar ger [ConnectionError.NoReply], som i den riktiga implementationen.
+     */
+    var replyWith: ((ByteArray) -> Outcome<ByteArray, ConnectionError>)? = null
+
+    /** Värden som har skrivits med [writeAndAwaitReply], i ordning. */
+    val writes: MutableList<Pair<CharacteristicId, List<Byte>>> = mutableListOf()
+
     override suspend fun read(address: BleAddress, characteristic: CharacteristicId): Outcome<ByteArray, ConnectionError> =
-        Outcome.Failure(ConnectionError.NotConnected)
+        readResults[characteristic] ?: Outcome.Failure(ConnectionError.NotConnected)
 
     override suspend fun write(
         address: BleAddress,
@@ -106,7 +118,12 @@ class FakeDeviceConnection : DeviceConnection {
         value: ByteArray,
         reply: CharacteristicId,
         isReply: (ByteArray) -> Boolean,
-    ): Outcome<ByteArray, ConnectionError> = Outcome.Failure(ConnectionError.NotConnected)
+    ): Outcome<ByteArray, ConnectionError> {
+        writes += characteristic to value.toList()
+        val answer = replyWith?.invoke(value) ?: return Outcome.Failure(ConnectionError.NotConnected)
+        val accepted = (answer as? Outcome.Success<ByteArray>)?.value?.let(isReply) != false
+        return if (accepted) answer else Outcome.Failure(ConnectionError.NoReply)
+    }
 
     override fun observeNotifications(
         address: BleAddress,
