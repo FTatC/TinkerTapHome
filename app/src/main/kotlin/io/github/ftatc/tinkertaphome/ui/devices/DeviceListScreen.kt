@@ -9,6 +9,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -17,6 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -41,10 +44,11 @@ import io.github.ftatc.tinkertaphome.ui.theme.TinkerTapTheme
 fun DeviceListScreen(
     onScanClick: () -> Unit,
     onDeviceClick: (Long) -> Unit,
+    onSettingsClick: () -> Unit,
     viewModel: DeviceListViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    DeviceListContent(uiState = uiState, onScanClick = onScanClick, onDeviceClick = onDeviceClick)
+    DeviceListContent(uiState = uiState, onScanClick = onScanClick, onDeviceClick = onDeviceClick, onSettingsClick = onSettingsClick)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -53,11 +57,21 @@ fun DeviceListContent(
     uiState: DeviceListUiState,
     onScanClick: () -> Unit,
     onDeviceClick: (Long) -> Unit,
+    onSettingsClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Scaffold(
         modifier = modifier,
-        topBar = { TopAppBar(title = { Text(stringResource(R.string.devices_title)) }) },
+        topBar = {
+            TopAppBar(
+                title = { Text(stringResource(R.string.devices_title)) },
+                actions = {
+                    IconButton(onClick = onSettingsClick) {
+                        Icon(painterResource(R.drawable.ic_settings), contentDescription = stringResource(R.string.settings_title))
+                    }
+                },
+            )
+        },
         floatingActionButton = {
             ExtendedFloatingActionButton(onClick = onScanClick) {
                 Text(stringResource(R.string.devices_scan))
@@ -120,6 +134,7 @@ private fun DeviceListContentPreview() {
         DeviceListContent(
             onScanClick = {},
             onDeviceClick = {},
+            onSettingsClick = {},
             uiState = DeviceListUiState.Content(
                 listOf(
                     ConnectedDevice(previewDevice(id = 1, address = "AA:BB:CC:DD:EE:01", name = "Lampa"), ConnectionState.Connected),

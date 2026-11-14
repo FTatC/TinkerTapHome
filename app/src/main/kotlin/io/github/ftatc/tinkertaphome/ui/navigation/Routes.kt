@@ -10,6 +10,10 @@ data object DeviceListRoute
 @Serializable
 data class DeviceDetailRoute(val deviceId: Long)
 
+/** Användarens inställningar. */
+@Serializable
+data object SettingsRoute
+
 /** Skärmen som söker efter nya enheter i närheten. */
 @Serializable
 data object ScanRoute

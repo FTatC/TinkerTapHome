@@ -88,4 +88,16 @@
     <string name="connection_error_characteristic_not_found">The device doesn\'t support this function.</string>
     <string name="connection_error_rejected">Bluetooth is busy. Try again.</string>
     <string name="connection_error_operation_failed">The device reported an error (%1$d).</string>
+    <string name="settings_title">Settings</string>
+    <string name="settings_scan_section">Scanning</string>
+    <string name="settings_scan_duration">Scan duration</string>
+    <string name="settings_scan_seconds">%1$d s</string>
+    <string name="settings_only_nodes">Show only TinkerTap nodes</string>
+    <string name="settings_only_nodes_summary">Other Bluetooth devices can\'t be saved anyway.</string>
+    <string name="settings_appearance_section">Appearance</string>
+    <string name="settings_theme">Theme</string>
+    <string name="settings_theme_system">Follow the system</string>
+    <string name="settings_theme_light">Light</string>
+    <string name="settings_theme_dark">Dark</string>
+    <string name="settings_save_failed">Couldn\'t save the setting</string>
 </resources>

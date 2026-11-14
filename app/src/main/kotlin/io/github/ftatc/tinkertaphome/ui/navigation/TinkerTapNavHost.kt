@@ -15,6 +15,7 @@ import io.github.ftatc.tinkertaphome.ui.devices.DeviceListScreen
 import io.github.ftatc.tinkertaphome.ui.save.SaveDeviceScreen
 import io.github.ftatc.tinkertaphome.ui.save.SaveDeviceViewModel
 import io.github.ftatc.tinkertaphome.ui.scan.ScanScreen
+import io.github.ftatc.tinkertaphome.ui.settings.SettingsScreen
 
 /**
  * Appens navigation. Skärmarna skickas in som parametrar med de riktiga skärmarna som standard,
@@ -23,21 +24,28 @@ import io.github.ftatc.tinkertaphome.ui.scan.ScanScreen
 @Composable
 fun TinkerTapNavHost(
     navController: NavHostController = rememberNavController(),
-    deviceListScreen: @Composable (onScanClick: () -> Unit, onDeviceClick: (Long) -> Unit) -> Unit =
-        { onScanClick, onDeviceClick -> DeviceListScreen(onScanClick = onScanClick, onDeviceClick = onDeviceClick) },
+    deviceListScreen: @Composable (onScanClick: () -> Unit, onDeviceClick: (Long) -> Unit, onSettingsClick: () -> Unit) -> Unit =
+        { onScanClick, onDeviceClick, onSettingsClick ->
+            DeviceListScreen(onScanClick = onScanClick, onDeviceClick = onDeviceClick, onSettingsClick = onSettingsClick)
+        },
     deviceDetailScreen: @Composable (route: DeviceDetailRoute) -> Unit = { route -> DefaultDeviceDetailScreen(route) },
     scanScreen: @Composable (onDeviceClick: (ScannedDevice) -> Unit) -> Unit = { onDeviceClick ->
         ScanScreen(onDeviceClick = onDeviceClick)
     },
     saveDeviceScreen: @Composable (route: SaveDeviceRoute, onSaved: () -> Unit, onDismiss: () -> Unit) -> Unit =
         { route, onSaved, onDismiss -> DefaultSaveDeviceScreen(route, onSaved, onDismiss) },
+    settingsScreen: @Composable () -> Unit = { SettingsScreen() },
 ) {
     NavHost(navController = navController, startDestination = DeviceListRoute) {
         composable<DeviceListRoute> {
             deviceListScreen(
                 { navController.navigate(ScanRoute) },
                 { deviceId -> navController.navigate(DeviceDetailRoute(deviceId)) },
+                { navController.navigate(SettingsRoute) },
             )
+        }
+        composable<SettingsRoute> {
+            settingsScreen()
         }
         composable<DeviceDetailRoute> { entry ->
             deviceDetailScreen(entry.toRoute<DeviceDetailRoute>())

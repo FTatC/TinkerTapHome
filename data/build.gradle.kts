@@ -25,6 +25,9 @@ dependencies {
     implementation(libs.room.ktx)
     ksp(libs.room.compiler)
 
+    // Användarens inställningar (steg 7.4 i docs/roadmap.md).
+    implementation(libs.datastore.preferences)
+
     // Tolkning av Info-JSON från TinkerTapNode (beslut i docs/roadmap.md, fas 6).
     implementation(libs.kotlinx.serialization.json)
 
