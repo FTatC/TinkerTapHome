@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.ftatc.tinkertaphome.R
 import io.github.ftatc.tinkertaphome.domain.model.BleAddress
+import io.github.ftatc.tinkertaphome.domain.model.ConnectionError
 import io.github.ftatc.tinkertaphome.domain.model.ConnectionState
 import io.github.ftatc.tinkertaphome.domain.model.Device
 import io.github.ftatc.tinkertaphome.domain.model.DeviceError
@@ -45,6 +46,7 @@ import io.github.ftatc.tinkertaphome.domain.node.NodeSessionError
 import io.github.ftatc.tinkertaphome.domain.node.Output
 import io.github.ftatc.tinkertaphome.domain.node.OutputId
 import io.github.ftatc.tinkertaphome.domain.node.OutputType
+import io.github.ftatc.tinkertaphome.domain.usecase.RepairNodeError
 import io.github.ftatc.tinkertaphome.ui.theme.TinkerTapTheme
 import kotlin.time.Duration.Companion.seconds
 
@@ -60,6 +62,7 @@ fun DeviceDetailScreen(viewModel: DeviceDetailViewModel) {
             onAllOffClick = viewModel::onAllOffClick,
             onTokenChange = viewModel::onTokenChange,
             onTokenSubmit = viewModel::onTokenSubmit,
+            onRepairClick = viewModel::onRepairClick,
         ),
     )
 }
@@ -71,6 +74,7 @@ data class DeviceDetailActions(
     val onAllOffClick: () -> Unit = {},
     val onTokenChange: (String) -> Unit = {},
     val onTokenSubmit: () -> Unit = {},
+    val onRepairClick: () -> Unit = {},
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -115,6 +119,7 @@ private fun DeviceDetails(
                 Text(stringResource(R.string.device_retry))
             }
         }
+        if (uiState.showsRepairForm) RepairForm(uiState, actions)
         if (uiState.asksForToken) TokenForm(uiState, actions)
         Outputs(uiState, actions)
     }
@@ -144,6 +149,26 @@ private fun TokenForm(uiState: DeviceDetailUiState.Content, actions: DeviceDetai
     )
     Button(onClick = actions.onTokenSubmit) {
         Text(stringResource(R.string.device_token_save))
+    }
+}
+
+/** Instruktionen och knappen för att parkoppla noden igen, med felet från förra försöket. */
+@Composable
+private fun RepairForm(uiState: DeviceDetailUiState.Content, actions: DeviceDetailActions) {
+    Text(stringResource(R.string.device_repair_instructions), style = MaterialTheme.typography.bodyMedium)
+    if (uiState.isRepairing) Text(stringResource(R.string.save_node_pairing))
+    uiState.repairError?.let { ErrorText(repairErrorMessage(it)) }
+    Button(onClick = actions.onRepairClick, enabled = !uiState.isRepairing) {
+        Text(stringResource(R.string.device_repair))
+    }
+}
+
+@Composable
+private fun repairErrorMessage(error: RepairNodeError): String = when (error) {
+    RepairNodeError.StillPairedInAndroid -> stringResource(R.string.device_repair_error_still_paired)
+    is RepairNodeError.Connection -> when (error.error) {
+        ConnectionError.BondFailed -> stringResource(R.string.save_node_error_bond_failed)
+        else -> connectionErrorMessage(error.error)
     }
 }
 

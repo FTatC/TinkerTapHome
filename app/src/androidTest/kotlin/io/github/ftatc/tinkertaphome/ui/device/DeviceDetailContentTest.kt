@@ -28,6 +28,7 @@ import io.github.ftatc.tinkertaphome.domain.node.Output
 import io.github.ftatc.tinkertaphome.domain.node.OutputId
 import io.github.ftatc.tinkertaphome.domain.node.OutputType
 import io.github.ftatc.tinkertaphome.domain.node.testNodeInfo
+import io.github.ftatc.tinkertaphome.domain.usecase.RepairNodeError
 import io.github.ftatc.tinkertaphome.ui.theme.TinkerTapTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -44,6 +45,7 @@ class DeviceDetailContentTest {
     private var retryClicks = 0
     private var allOffClicks = 0
     private var tokenSubmits = 0
+    private var repairClicks = 0
     private val outputChanges = mutableListOf<Pair<Output, Int>>()
     private val typedTokens = mutableListOf<String>()
 
@@ -67,6 +69,7 @@ class DeviceDetailContentTest {
                         onAllOffClick = { allOffClicks++ },
                         onTokenChange = { typedTokens += it },
                         onTokenSubmit = { tokenSubmits++ },
+                        onRepairClick = { repairClicks++ },
                     ),
                 )
             }
@@ -264,7 +267,62 @@ class DeviceDetailContentTest {
         )
 
         composeRule.onNodeWithText(string(R.string.connection_error_pairing_missing)).assertIsDisplayed()
-        composeRule.onNodeWithText(string(R.string.device_retry)).assertIsDisplayed()
         composeRule.onNodeWithText(string(R.string.device_token_save)).assertDoesNotExist()
+    }
+
+    @Test
+    fun aMissingPairingOffersToPairAgainInsteadOfARetry() {
+        showDevice(ConnectionState.Failed(ConnectionError.PairingMissing))
+
+        composeRule.onNodeWithText(string(R.string.device_repair_instructions)).assertIsDisplayed()
+        composeRule.onNodeWithText(string(R.string.device_retry)).assertDoesNotExist()
+        composeRule.onNodeWithText(string(R.string.device_repair)).performClick()
+
+        assertEquals(1, repairClicks)
+    }
+
+    @Test
+    fun aForgottenPairingOffersToPairAgain() {
+        showSession(
+            NodeSession.Failed(NodeSessionError.Node(NodeFailure.Connection(ConnectionError.PairingMissing))),
+            connection = ConnectionState.Disconnected,
+        )
+
+        composeRule.onNodeWithText(string(R.string.device_repair)).assertIsDisplayed()
+    }
+
+    @Test
+    fun theButtonWaitsWhilePairing() {
+        show(DeviceDetailUiState.Content(lampa, ConnectionState.Connecting, isRepairing = true))
+
+        // Under parkopplingen är anslutningen inte längre misslyckad, men formuläret ska ändå synas.
+        composeRule.onNodeWithText(string(R.string.save_node_pairing)).assertIsDisplayed()
+        composeRule.onNodeWithText(string(R.string.device_repair)).assertIsNotEnabled()
+    }
+
+    @Test
+    fun aPairingThatAndroidStillHasIsExplained() {
+        show(
+            DeviceDetailUiState.Content(
+                lampa,
+                ConnectionState.Failed(ConnectionError.PairingMissing),
+                repairError = RepairNodeError.StillPairedInAndroid,
+            ),
+        )
+
+        composeRule.onNodeWithText(string(R.string.device_repair_error_still_paired)).assertIsDisplayed()
+    }
+
+    @Test
+    fun aFailedPairingAsksForTheButtonOnTheDevice() {
+        show(
+            DeviceDetailUiState.Content(
+                lampa,
+                ConnectionState.Failed(ConnectionError.PairingMissing),
+                repairError = RepairNodeError.Connection(ConnectionError.BondFailed),
+            ),
+        )
+
+        composeRule.onNodeWithText(string(R.string.save_node_error_bond_failed)).assertIsDisplayed()
     }
 }

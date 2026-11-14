@@ -16,6 +16,8 @@ import io.github.ftatc.tinkertaphome.domain.node.Output
 import io.github.ftatc.tinkertaphome.domain.usecase.AllOffUseCase
 import io.github.ftatc.tinkertaphome.domain.usecase.ObserveConnectedDevicesUseCase
 import io.github.ftatc.tinkertaphome.domain.usecase.ObserveOutputsUseCase
+import io.github.ftatc.tinkertaphome.domain.usecase.RepairNodeError
+import io.github.ftatc.tinkertaphome.domain.usecase.RepairNodeUseCase
 import io.github.ftatc.tinkertaphome.domain.usecase.RetryConnectionUseCase
 import io.github.ftatc.tinkertaphome.domain.usecase.SetOutputUseCase
 import io.github.ftatc.tinkertaphome.domain.usecase.UpdateAuthTokenUseCase
@@ -37,7 +39,8 @@ import kotlinx.coroutines.launch
  *
  * Appen ansluter själv till sparade enheter medan den syns (se `ForegroundConnectionsViewModel`),
  * så skärmen har inga knappar för att ansluta eller koppla ner. Har ett fel stoppat anslutningen kan
- * användaren försöka igen, och har noden avvisat tokenet kan användaren ange ett nytt.
+ * användaren försöka igen, och har noden avvisat tokenet kan användaren ange ett nytt. Har noden glömt
+ * telefonen kan användaren parkoppla den igen.
  *
  * Utgångarna visar alltid nodens State, inte det skickade värdet, eftersom noden kan begränsa värdet.
  * Ett kommando skickas i taget.
@@ -52,6 +55,7 @@ class DeviceDetailViewModel @AssistedInject constructor(
     private val setOutput: SetOutputUseCase,
     private val allOff: AllOffUseCase,
     private val updateAuthToken: UpdateAuthTokenUseCase,
+    private val repairNode: RepairNodeUseCase,
 ) : ViewModel() {
 
     private val input = MutableStateFlow(DetailInput())
@@ -100,6 +104,17 @@ class DeviceDetailViewModel @AssistedInject constructor(
         }
     }
 
+    /** Parkopplar noden igen. Användaren ska ha tryckt på knappen på noden först. */
+    fun onRepairClick() {
+        val current = content() ?: return
+        if (!current.canRepair || current.isRepairing) return
+        input.update { it.copy(isRepairing = true, repairError = null) }
+        viewModelScope.launch {
+            val result = repairNode(current.device.address)
+            input.update { it.copy(isRepairing = false, repairError = (result as? Outcome.Failure)?.error) }
+        }
+    }
+
     private fun sendCommand(command: suspend (BleAddress) -> Outcome<Unit, NodeFailure>) {
         val current = content() ?: return
         if (!current.canControl) return
@@ -124,6 +139,8 @@ class DeviceDetailViewModel @AssistedInject constructor(
                 token = input.token,
                 tokenInvalid = input.tokenInvalid,
                 tokenSaveFailed = input.tokenSaveFailed,
+                isRepairing = input.isRepairing,
+                repairError = input.repairError,
             )
         }
     }
@@ -146,6 +163,8 @@ private data class DetailInput(
     val token: String = "",
     val tokenInvalid: Boolean = false,
     val tokenSaveFailed: Boolean = false,
+    val isRepairing: Boolean = false,
+    val repairError: RepairNodeError? = null,
 )
 
 private fun Outcome<ConnectedDevice?, DeviceError>.toDeviceDetailUiState(): DeviceDetailUiState = when (this) {

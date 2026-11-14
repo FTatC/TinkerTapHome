@@ -20,6 +20,13 @@ interface DeviceConnection {
     fun observeState(address: BleAddress): StateFlow<ConnectionState>
 
     /**
+     * `true` om Android anser att telefonen är parkopplad med enheten. Det kan vara sant även när
+     * enheten själv har glömt telefonen. Då måste användaren ta bort enheten i Androids
+     * Bluetooth-inställningar, eftersom appen inte kan ta bort en parkoppling.
+     */
+    fun isPaired(address: BleAddress): Boolean
+
+    /**
      * Ansluter till en enhet som inte är parkopplad än, parkopplar och söker efter enhetens tjänster.
      * Används när en enhet sparas. Misslyckas om enheten inte svarar inom kort.
      * Är enheten redan ansluten lyckas anropet direkt.
