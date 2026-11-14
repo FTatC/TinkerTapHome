@@ -18,7 +18,7 @@
 | 4 Spara en enhet | ✅ Klar | #15, #19 |
 | 5 Anslutning och GATT-kö | ✅ Klar | #27, #28 |
 | 6 Styrning via enhetsprotokollet | ✅ Klar. Fråga 1 och 6 är verifierade på hårdvara. | #41–#47 |
-| 7 Utbyggnad | ⏳ Nästa. Planerad i steg 7.1–7.6 (se fas 7). Steg 7.1 (CI) först. | – |
+| 7 Utbyggnad | ⏳ Pågår. Steg 7.1 (CI) är klart, 7.2 (arkitekturtest) är nästa (se fas 7). | #48, #49 |
 
 **Härdning utanför planen**, gjord mellan fas 4 och 5:
 - #16: Fel från externa anrop hanteras i stället för att tappas eller krascha appen.
@@ -251,7 +251,7 @@ Fas 6 gjorde kärnfunktionen klar: att hitta, spara, ansluta till och styra node
 
 | Steg | Branch | Innehåll | Tester |
 |---|---|---|---|
-| 7.1 | `chore/ci` | **CI.** `.github/workflows/ci.yml` kör `./gradlew test lint assembleDebug assembleDebugAndroidTest` på varje PR mot `main` och vid push till `main`, med beroendeverifieringen påslagen. Actions låses till en commit-SHA. Branch protection på `main` kräver att jobbet är grönt. Besluten finns nedan. | Workflowen körs på PR:en som lägger till den. |
+| ✅ 7.1 | `chore/ci` | **CI.** `.github/workflows/ci.yml` kör `./gradlew test lint assembleDebug assembleDebugAndroidTest` på varje PR mot `main` och vid push till `main`, med beroendeverifieringen påslagen. Actions låses till en commit-SHA. Branch protection på `main` kräver att jobbet är grönt. Besluten finns nedan. | Workflowen körs på PR:en som lägger till den. |
 | 7.2 | `chore/architecture-test` | **Arkitekturtest.** 🔶 Konsist, ett nytt testberoende. Tester som upptäcker `public`-deklarationer i `:data`, Android-importer i `:domain`, Kotlins `Result` i domänens API:er och `object` med muterbart tillstånd. | Testerna körs av `./gradlew test` och därmed i CI. Varje regel provas mot ett exempel som bryter mot den. |
 | 7.3 | `feature/repair-node` | **Parkoppla en sparad nod igen.** Löser den öppna frågan från fas 6: när noden har glömt telefonen (`PairingMissing`) visar detaljvyn "Parkoppla igen", som går igenom knappen på noden och parkopplingen utan att spara noden på nytt. Användaren måste först ta bort noden i Bluetooth-inställningarna, eftersom appen inte kan ta bort en parkoppling. 🔶 Om flödet ska ligga i detaljvyn eller i spara-dialogen. | JVM-tester för use case och ViewModel, Compose-tester, manuellt mot en nod vars parkopplingar har raderats. |
 | 7.4 | `feature/settings` | **Inställningar.** DataStore, som redan finns i versionskatalogen, bakom ett interface i `:domain`. 🔶 Vilka inställningar, till exempel skanningens längd och tema (ljust, mörkt eller systemets). | JVM-tester för repository med en fake och för ViewModel, Compose-tester för inställningsskärmen. |
@@ -263,7 +263,8 @@ Fas 6 gjorde kärnfunktionen klar: att hitta, spara, ansluta till och styra node
 - ✅ **Actions:** bara `actions/checkout` och `actions/setup-java` från GitHub och `gradle/actions/setup-gradle` från Gradle. `setup-gradle` cachar Gradle och kontrollerar att `gradle-wrapper.jar` är äkta. Alla låses till en commit-SHA, så att en ändrad tagg inte kan byta ut koden.
 - ✅ **JDK:** Temurin 21 i CI. Koden kompileras ändå för Java 17 (`jvmTarget` i `gradle/libs.versions.toml`).
 - ✅ **Instrumenterade tester:** körs inte i CI till att börja med. Det skulle kräva en emulator via en Action från tredje part, till exempel `reactivecircus/android-emulator-runner`. `connectedAndroidTest` körs fortsatt lokalt, som CLAUDE.md säger.
-- ✅ **Branch protection:** Claude slår på regeln för `main` med `gh api` när workflowen har gått igenom en gång, så att jobbets namn finns att välja. Anropet visas innan det görs.
+- ✅ **Branch protection:** påslagen för `main` 2026-11-14 med `gh api`. Jobbet "Test, lint and build" måste vara grönt innan merge (`strict: false`), reglerna gäller även admin (`enforce_admins: true`), ingen granskning krävs, och force push och borttagning av `main` är blockerade.
+- ✅ **Beroendeverifiering i CI:** `aapt2` finns i en fil per operativsystem, och verifieringsfilen hade bara Windows-versionen. Checksumman för `aapt2-…-linux.jar` lades till efter kontroll mot den SHA-1 som Google publicerar. När AGP uppdateras behöver Linux-versionen av `aapt2` också läggas in.
 
 ---
 
