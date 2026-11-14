@@ -155,4 +155,47 @@ class GattSessionReplyTest {
         assertEquals(FakeRequest.Read(state), connector.requests.last())
         read.await()
     }
+
+    @Test
+    fun `turns on notifications for the reply before the first write and only once`() = runTest {
+        connected()
+        answerWritesWith(changed(result, 1, 0, 0))
+
+        send()
+        send()
+
+        val requests = connector.requests.filter { it !is FakeRequest.DiscoverServices && it !is FakeRequest.RequestMtu }
+        assertEquals(
+            listOf(
+                FakeRequest.SetNotifications(result, enabled = true),
+                FakeRequest.Write(command, listOf<Byte>(1, 0, 1)),
+                FakeRequest.Write(command, listOf<Byte>(1, 0, 1)),
+            ),
+            requests,
+        )
+    }
+
+    @Test
+    fun `turns on notifications again after a new connection`() = runTest {
+        connected()
+        answerWritesWith(changed(result, 1, 0, 0))
+        send()
+        session.disconnect()
+
+        connected()
+        send()
+
+        assertEquals(2, connector.requests.count { it == FakeRequest.SetNotifications(result, enabled = true) })
+    }
+
+    @Test
+    fun `does not write when notifications for the reply cannot be turned on`() = runTest {
+        connected()
+        connector.respond = { request ->
+            if (request is FakeRequest.SetNotifications) GattEvent.NotificationsChanged(result, status = 3) else connector.successFor(request)
+        }
+
+        assertEquals(Outcome.Failure(ConnectionError.OperationFailed(3)), send())
+        assertFalse(connector.requests.any { it is FakeRequest.Write })
+    }
 }

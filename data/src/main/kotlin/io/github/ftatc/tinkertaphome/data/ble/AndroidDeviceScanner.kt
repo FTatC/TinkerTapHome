@@ -73,13 +73,18 @@ private fun MutableMap<BleAddress, ScannedDevice>.addOrUpdateWithinLimit(device:
         if (device.rssi <= weakest.rssi) return false
         remove(weakest.address)
     }
-    this[device.address] = device.keepingNameFrom(known)
+    this[device.address] = device.keepingKnownFrom(known)
     return true
 }
 
-/** Annonserar enheten inget namn i ett paket behålls namnet från ett tidigare paket. */
-private fun ScannedDevice.keepingNameFrom(previous: ScannedDevice?): ScannedDevice =
-    if (name == null && previous?.name != null) copy(name = previous.name) else this
+/**
+ * Behåller det som ett tidigare paket har visat. Namnet ligger i svaret på en skanning och
+ * service-UUID:t i reklampaketet, så ett enskilt paket har inte alltid båda.
+ */
+private fun ScannedDevice.keepingKnownFrom(previous: ScannedDevice?): ScannedDevice = copy(
+    name = name ?: previous?.name,
+    isTinkerTapNode = isTinkerTapNode || previous?.isTinkerTapNode == true,
+)
 
 private fun RawScanEvent.Stopped.toBleError(): BleError = when (this) {
     RawScanEvent.BluetoothOff -> BleError.BluetoothOff

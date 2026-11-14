@@ -27,6 +27,25 @@
     </plurals>
     <string name="save_device_error_already_saved">Enheten är redan sparad</string>
     <string name="save_device_error_storage">Det gick inte att spara enheten</string>
+    <string name="scan_not_supported">%1$s · Stöds inte</string>
+    <string name="save_node_press_button">Tryck på parkopplingsknappen på enheten. Lampmatrisen visar en blinkande Bluetooth-symbol. Tryck sedan på Parkoppla inom 30 sekunder.</string>
+    <string name="save_node_already_paired">Är telefonen redan parkopplad med enheten behöver du inte trycka på knappen.</string>
+    <string name="save_node_pair">Parkoppla</string>
+    <string name="save_node_pairing">Parkopplar… Godkänn parkopplingen om Android frågar.</string>
+    <string name="save_node_token_label">Token</string>
+    <string name="save_node_token_hint">Standardtokenet är tinker</string>
+    <string name="save_node_error_bond_failed">Parkopplingen misslyckades. Tryck på parkopplingsknappen på enheten och försök igen inom 30 sekunder.</string>
+    <string name="save_node_error_token_invalid">Använd bokstäver, siffror eller vanliga tecken, högst %1$d</string>
+    <string name="node_error_invalid_info">Enheten skickade information som appen inte förstår.</string>
+    <string name="node_error_node_too_old">Enheten kör en för gammal firmware. Uppdatera enheten.</string>
+    <string name="node_error_node_too_old_version">Enheten kör ett äldre protokoll (version %1$d). Uppdatera enheten.</string>
+    <string name="node_error_app_too_old">Enheten kräver en nyare version av appen (protokoll %1$d).</string>
+    <string name="node_error_state_mismatch">Enhetens utgångar stämmer inte med dess beskrivning.</string>
+    <string name="node_error_auth_failed">Fel token. Kontrollera tokenet och försök igen.</string>
+    <string name="node_error_not_authorized">Enheten kräver ett token.</string>
+    <string name="node_error_invalid_output">Utgången finns inte längre på enheten.</string>
+    <string name="node_error_rejected">Enheten avvisade kommandot.</string>
+    <string name="node_error_unknown_status">Enheten svarade med ett okänt fel (%1$d).</string>
     <string name="permission_ble_title">Appen behöver Bluetooth-åtkomst</string>
     <string name="permission_ble_rationale">TinkerTap Home hittar och styr dina enheter via Bluetooth. Din plats används aldrig.</string>
     <string name="permission_ble_rationale_denied">Utan Bluetooth-åtkomst kan appen inte hitta eller styra några enheter.</string>

@@ -56,9 +56,10 @@ interface DeviceConnection {
      * Skriver [value] till [characteristic] och väntar på enhetens svar: den första notifieringen från
      * [reply] som [isReply] godtar och som kommer efter att skrivningen har startat.
      *
-     * Notifieringarna för [reply] måste redan vara påslagna med [observeNotifications]. Ingen annan
-     * operation mot enheten körs innan svaret har kommit. Kommer inget svar strax efter att
-     * skrivningen har bekräftats stängs anslutningen och [ConnectionError.NoReply] returneras.
+     * Notifieringarna för [reply] slås på först om de inte redan är på, och de förblir påslagna så
+     * länge anslutningen är uppe. Ingen annan operation mot enheten körs innan svaret har kommit.
+     * Kommer inget svar strax efter att skrivningen har bekräftats stängs anslutningen och
+     * [ConnectionError.NoReply] returneras.
      */
     suspend fun writeAndAwaitReply(
         address: BleAddress,

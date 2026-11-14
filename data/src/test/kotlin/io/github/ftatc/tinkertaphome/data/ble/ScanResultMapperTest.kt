@@ -1,10 +1,14 @@
 package io.github.ftatc.tinkertaphome.data.ble
 
+import io.github.ftatc.tinkertaphome.data.ble.protocol.NodeProtocol
 import io.github.ftatc.tinkertaphome.domain.model.DeviceNames
 import io.github.ftatc.tinkertaphome.domain.model.ScannedDevice
 import io.github.ftatc.tinkertaphome.domain.model.testAddress
+import java.util.UUID
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ScanResultMapperTest {
@@ -52,5 +56,14 @@ class ScanResultMapperTest {
         val event = RawScanEvent.Result(address = testAddress(1).value, name = "\u200B\u202E", rssi = -55)
 
         assertNull(event.toScannedDevice()?.name)
+    }
+
+    @Test
+    fun `marks a device that advertises the TinkerTapNode service as a node`() {
+        val node = RawScanEvent.Result(address = testAddress(1).value, name = "TinkerTapNode-A1B2", rssi = -55, serviceUuids = listOf(NodeProtocol.SERVICE))
+        val other = RawScanEvent.Result(address = testAddress(2).value, name = "Klocka", rssi = -55, serviceUuids = listOf(UUID.randomUUID()))
+
+        assertTrue(node.toScannedDevice()!!.isTinkerTapNode)
+        assertFalse(other.toScannedDevice()!!.isTinkerTapNode)
     }
 }

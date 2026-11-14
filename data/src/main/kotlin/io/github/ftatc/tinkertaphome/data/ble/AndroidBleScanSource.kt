@@ -82,4 +82,9 @@ private fun ScanListener.toScanCallback(): ScanCallback = object : ScanCallback(
  * BLUETOOTH_CONNECT och kan ge ett gammalt cachat namn.
  */
 private fun ScanResult.toRawEvent(): RawScanEvent.Result =
-    RawScanEvent.Result(address = device.address, name = scanRecord?.deviceName, rssi = rssi)
+    RawScanEvent.Result(
+        address = device.address,
+        name = scanRecord?.deviceName,
+        rssi = rssi,
+        serviceUuids = scanRecord?.serviceUuids.orEmpty().map { it.uuid },
+    )

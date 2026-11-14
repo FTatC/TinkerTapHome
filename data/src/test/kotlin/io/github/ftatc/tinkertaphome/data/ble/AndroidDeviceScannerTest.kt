@@ -2,6 +2,7 @@ package io.github.ftatc.tinkertaphome.data.ble
 
 import app.cash.turbine.ReceiveTurbine
 import app.cash.turbine.test
+import io.github.ftatc.tinkertaphome.data.ble.protocol.NodeProtocol
 import io.github.ftatc.tinkertaphome.domain.Outcome
 import io.github.ftatc.tinkertaphome.domain.model.BleError
 import io.github.ftatc.tinkertaphome.domain.model.ScannedDevice
@@ -108,6 +109,21 @@ class AndroidDeviceScannerTest {
             source.send(result(id = 1, name = null, rssi = -50))
 
             assertEquals(listOf(device(1, "Lampa", -50)), awaitDevices())
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `remembers that a device is a node when a later packet lacks the service`() = runTest {
+        // Service-UUID:t ligger i reklampaketet och namnet i svaret på skanningen, så de kan komma var för sig.
+        scanner.scan().test {
+            awaitItem()
+            source.send(result(id = 1, name = null, rssi = -60).copy(serviceUuids = listOf(NodeProtocol.SERVICE)))
+            awaitItem()
+
+            source.send(result(id = 1, name = "TinkerTapNode-A1B2", rssi = -50))
+
+            assertEquals(listOf(device(1, "TinkerTapNode-A1B2", -50).copy(isTinkerTapNode = true)), awaitDevices())
             cancelAndIgnoreRemainingEvents()
         }
     }
