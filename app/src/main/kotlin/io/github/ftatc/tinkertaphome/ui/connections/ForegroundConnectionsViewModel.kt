@@ -13,7 +13,7 @@ import kotlinx.coroutines.launch
 
 /**
  * Håller sparade enheter anslutna medan appen syns och kopplar ner dem när den går till bakgrunden
- * (fråga 5 i `docs/open-questions.md`). Anslutningar i bakgrunden hör till fas 7.
+ * (fråga 5 i `docs/open-questions.md`). Anslutningar i bakgrunden planeras inte (beslut 2026-11-14).
  *
  * Nedkopplingen väntar [BACKGROUND_GRACE], så att en rotation av skärmen, som också stoppar
  * aktiviteten en kort stund, inte kopplar ner alla enheter.
