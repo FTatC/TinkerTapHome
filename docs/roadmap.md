@@ -1,6 +1,6 @@
 # Roadmap: nästa steg i implementationen av TinkerTapHome
 
-## Status (2026-11-13)
+## Status (2026-11-14)
 
 | Fas | Status | PR |
 |---|---|---|
@@ -17,8 +17,8 @@
 | 3 Skanningsskärm och navigation | ✅ Klar | #14, #25 |
 | 4 Spara en enhet | ✅ Klar | #15, #19 |
 | 5 Anslutning och GATT-kö | ✅ Klar | #27, #28 |
-| 6 Styrning via enhetsprotokollet | ⏳ Nästa. Besluten och planen är klara, steg 6.1–6.6 (se fas 6). Fråga 1 och 6 verifieras på hårdvara under fasen. | – |
-| 7 Senare | ⬜ Ej planerad i detalj | – |
+| 6 Styrning via enhetsprotokollet | ✅ Klar. Fråga 1 och 6 är verifierade på hårdvara. | #41–#47 |
+| 7 Utbyggnad | ⏳ Nästa. Planerad i steg 7.1–7.6 (se fas 7). Steg 7.1 (CI) först. | – |
 
 **Härdning utanför planen**, gjord mellan fas 4 och 5:
 - #16: Fel från externa anrop hanteras i stället för att tappas eller krascha appen.
@@ -203,7 +203,7 @@ Ordningen är vald så att datamodellen är rättad innan BLE-koden börjar anv�
 
 ---
 
-## Fas 6: Styrning via enhetsprotokollet
+## ✅ Fas 6: Styrning via enhetsprotokollet
 
 Underlag: `docs/ble-protocol.md` (protokollversion 3, firmware TinkerTapNode `0.4.0`, Arduino-repots `main`, commit `7632768`) och `docs/open-questions.md`. Krockarna med fas 5-koden kommer från firmwarens `docs/app-flow.md`, se "Jämfört med appen i dag" i `docs/ble-protocol.md`.
 
@@ -243,12 +243,27 @@ Varje steg är en egen branch och en egen PR, i den här ordningen (beslut 2026-
 
 ---
 
-## Fas 7: Senare (planeras inte i detalj nu)
-- **CI:** `.github/workflows/ci.yml` som kör `test`, `lint` och `assemble*` på varje PR, kanske också `connectedAndroidTest` på en emulator (🔶 tredjeparts-Action), samt branch protection på `main`.
-- **Rum och scener:** nya Room-tabeller, var och en med en migration.
-- **Inställningar:** DataStore, till exempel för skanningens längd och tema.
-- **Anslutningar i bakgrunden:** en foreground service. 🔶 Kräver manifestbehörigheten `FOREGROUND_SERVICE_CONNECTED_DEVICE`. Fram till dess kopplar appen ner när den går till bakgrunden (fråga 5).
-- 🔶 **Arkitekturtest:** Konsist, ett nytt beroende, för att automatiskt upptäcka nya `public`-klasser i `:data`.
+## Fas 7: Utbyggnad
+
+Fas 6 gjorde kärnfunktionen klar: att hitta, spara, ansluta till och styra noder. Fas 7 skyddar koden med CI och ett arkitekturtest och bygger sedan ut appen. Varje steg är en egen branch och en egen PR, i den här ordningen (plan 2026-11-14). Steg markerade med 🔶 har beslut som måste tas innan steget börjar.
+
+### Steg
+
+| Steg | Branch | Innehåll | Tester |
+|---|---|---|---|
+| 7.1 | `chore/ci` | **CI.** `.github/workflows/ci.yml` kör `./gradlew test lint assembleDebug assembleDebugAndroidTest` på varje PR mot `main` och vid push till `main`, med beroendeverifieringen påslagen. Actions låses till en commit-SHA. Branch protection på `main` kräver att jobbet är grönt. Besluten finns nedan. | Workflowen körs på PR:en som lägger till den. |
+| 7.2 | `chore/architecture-test` | **Arkitekturtest.** 🔶 Konsist, ett nytt testberoende. Tester som upptäcker `public`-deklarationer i `:data`, Android-importer i `:domain`, Kotlins `Result` i domänens API:er och `object` med muterbart tillstånd. | Testerna körs av `./gradlew test` och därmed i CI. Varje regel provas mot ett exempel som bryter mot den. |
+| 7.3 | `feature/repair-node` | **Parkoppla en sparad nod igen.** Löser den öppna frågan från fas 6: när noden har glömt telefonen (`PairingMissing`) visar detaljvyn "Parkoppla igen", som går igenom knappen på noden och parkopplingen utan att spara noden på nytt. Användaren måste först ta bort noden i Bluetooth-inställningarna, eftersom appen inte kan ta bort en parkoppling. 🔶 Om flödet ska ligga i detaljvyn eller i spara-dialogen. | JVM-tester för use case och ViewModel, Compose-tester, manuellt mot en nod vars parkopplingar har raderats. |
+| 7.4 | `feature/settings` | **Inställningar.** DataStore, som redan finns i versionskatalogen, bakom ett interface i `:domain`. 🔶 Vilka inställningar, till exempel skanningens längd och tema (ljust, mörkt eller systemets). | JVM-tester för repository med en fake och för ViewModel, Compose-tester för inställningsskärmen. |
+| 7.5 | `feature/rooms` | **Rum.** En tabell för rum och en kolumn för rum i `devices`. Databasversion 3 med en migration. Enhetslistan grupperas per rum. 🔶 Om en nod bara kan ligga i ett rum. | `MigrationTest` och DAO-tester med `connectedAndroidTest`, JVM-tester för use cases och ViewModel. |
+| 7.6 | `feature/scenes` | **Scener.** En scen är en uppsättning värden för utgångar på en eller flera noder som skickas tillsammans, till exempel "Kväll". Databasversion 4 med en migration. Utgångarna sparas med nodens adress och utgångens namn, inte med id, eftersom id kan ändras mellan firmwareversioner. 🔶 Vad som händer när en nod i scenen inte är ansluten. | Som 7.5, och JVM-tester för hur en scen skickas när en nod saknas. |
+
+### Beslut för steg 7.1 (2026-11-14)
+
+- ✅ **Actions:** bara `actions/checkout` och `actions/setup-java` från GitHub och `gradle/actions/setup-gradle` från Gradle. `setup-gradle` cachar Gradle och kontrollerar att `gradle-wrapper.jar` är äkta. Alla låses till en commit-SHA, så att en ändrad tagg inte kan byta ut koden.
+- ✅ **JDK:** Temurin 21 i CI. Koden kompileras ändå för Java 17 (`jvmTarget` i `gradle/libs.versions.toml`).
+- ✅ **Instrumenterade tester:** körs inte i CI till att börja med. Det skulle kräva en emulator via en Action från tredje part, till exempel `reactivecircus/android-emulator-runner`. `connectedAndroidTest` körs fortsatt lokalt, som CLAUDE.md säger.
+- ✅ **Branch protection:** Claude slår på regeln för `main` med `gh api` när workflowen har gått igenom en gång, så att jobbets namn finns att välja. Anropet visas innan det görs.
 
 ---
 

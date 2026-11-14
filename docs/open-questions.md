@@ -89,7 +89,7 @@ Firmware `0.1.0` saknar både `proto` och Result. Protokoll 3 är mergat till Ar
 **Svar (2026-11-13):** Appen använder `autoConnect = true` **i förgrunden**.
 - Sparade noder ansluts med `autoConnect = true` medan appen syns, så att Android ansluter när noden kommer inom räckhåll. En ny nod som inte har sparats ansluts fortfarande med `autoConnect = false`.
 - När appen går till bakgrunden kopplar den ner alla noder. Då annonserar noderna igen och andra telefoner kan ansluta. När appen syns igen ansluter den på nytt.
-- Anslutningar i bakgrunden, med en foreground service, görs inte nu. De ligger kvar i fas 7.
+- Anslutningar i bakgrunden, med en foreground service, görs inte nu. De planeras inte heller i fas 7 (beslut 2026-11-14).
 - Appen begär `requestMtu(247)` efter anslutningen och före `discoverServices()`, som firmwaren rekommenderar. Får appen ett lägre värde fungerar protokollet ändå, så ett avslag eller ett lägre MTU-värde är inget fel.
 
 **Följder för koden:**
