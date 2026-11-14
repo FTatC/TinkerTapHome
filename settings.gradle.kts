@@ -35,3 +35,4 @@ rootProject.name = "TinkerTapHome"
 include(":app")
 include(":domain")
 include(":data")
+include(":architecture")

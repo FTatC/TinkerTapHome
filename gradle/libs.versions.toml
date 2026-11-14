@@ -32,6 +32,7 @@ androidxTestRunner = "1.7.0"
 espresso = "3.7.0"
 mockk = "1.14.11"
 turbine = "1.2.1"
+konsist = "0.18.1"
 
 [libraries]
 # Byggberoenden för konventionspluginsen i build-logic. Samma versioner som pluginsen nedan.
@@ -76,6 +77,7 @@ androidx-test-runner = { group = "androidx.test", name = "runner", version.ref =
 androidx-test-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espresso" }
 mockk = { group = "io.mockk", name = "mockk", version.ref = "mockk" }
 turbine = { group = "app.cash.turbine", name = "turbine", version.ref = "turbine" }
+konsist = { group = "com.lemonappdev", name = "konsist", version.ref = "konsist" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
