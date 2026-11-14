@@ -3,6 +3,7 @@ package io.github.ftatc.tinkertaphome.domain.node
 import io.github.ftatc.tinkertaphome.domain.Outcome
 import io.github.ftatc.tinkertaphome.domain.model.BleAddress
 import io.github.ftatc.tinkertaphome.domain.model.ConnectionError
+import kotlinx.coroutines.flow.Flow
 
 /**
  * Pratar TinkerTapNodes protokoll med en ansluten nod. Implementeras i `data`-lagret ovanpå
@@ -15,6 +16,16 @@ interface NodeClient {
 
     /** Skickar [command] och väntar på nodens svar. Lyckas bara om noden svarar OK. */
     suspend fun send(address: BleAddress, command: NodeCommand): Outcome<Unit, NodeFailure>
+
+    /** Läser utgångarnas värden från State. Ger ett fel om State inte har ett värde per utgång i [info]. */
+    suspend fun readState(address: BleAddress, info: NodeInfo): Outcome<List<Int>, NodeFailure>
+
+    /**
+     * Följer State och skickar utgångarnas värden varje gång noden ändrar dem. Bryts anslutningen, eller
+     * har State fel längd, skickas ett fel och flödet avslutas. Kopplas noden ner utan fel avslutas
+     * flödet utan att skicka något mer.
+     */
+    fun observeState(address: BleAddress, info: NodeInfo): Flow<Outcome<List<Int>, NodeFailure>>
 }
 
 /** Varför ett anrop till en nod misslyckades. */

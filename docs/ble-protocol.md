@@ -201,7 +201,7 @@ Firmwaren rekommenderar att kommandon skickas med **Write With Response**, ett i
 - Om skrivningen bekräftas utan att något Result har kommit har noden ignorerat kommandot eftersom nedkoppling pågår. Det ska behandlas som ett fel, och anslutningen bryts strax.
 - Write Without Response fungerar också, men då kan appen inte para ihop två likadana kommandon med sina svar, och utan kryptering försvinner skrivningen tyst. Appen ska inte använda det.
 - **I appen ska svaret ändå väntas in uttryckligen.** Även om `onCharacteristicChanged` kommer före `onCharacteristicWrite` levereras notifieringar i `GattSession` via ett eget flöde, och den som väntar på skrivningen kan återupptas innan Result har behandlats. Appen ska därför vänta på ett Result med samma opcode, och samma `deviceId` när det finns, med en kort timeout, innan nästa kommando skickas.
-- Att Result kommer före bekräftelsen bygger på hur ArduinoBLE och Androids BLE-stack beter sig. Det bör verifieras på en riktig enhet (se fråga 6 i [`docs/open-questions.md`](open-questions.md)).
+- Att Result kommer före bekräftelsen bygger på hur ArduinoBLE och Androids BLE-stack beter sig. Appen väntar ändå på Result separat, och med det har kommandona fungerat på en riktig enhet med Android 16 (fråga 6 i [`docs/open-questions.md`](open-questions.md), besvarad 2026-11-14).
 
 ### Exempel
 
@@ -369,7 +369,7 @@ Vid återanslutning behövs inte steg 5, eftersom parkopplingen finns kvar även
 | Rekommendation | `:data` i dag |
 |---|---|
 | `autoConnect = true` för kända noder | ✅ `DeviceConnection.connect()` använder `autoConnect = true` utan tidsgräns och visar `ConnectionState.Waiting` medan Android väntar på noden. `pair()` använder `autoConnect = false` med `CONNECT_TIMEOUT`. `KeepSavedDevicesConnectedUseCase` håller sparade noder anslutna medan appen syns och ansluter igen 5 s efter ett avbrott. |
-| Steg 3–6 inom `ato` | Saknas. Appen ansluter men skickar inte `AUTH`, så en nod med `auth` = `1` kopplar ner efter 10 s och appen ansluter igen efter 5 s. Hör till steg 6.6. Varje operation har dessutom en timeout på 10 s (`OPERATION_TIMEOUT`), lika lång som hela budgeten. |
+| Steg 3–6 inom `ato` | ✅ `KeepSavedDevicesConnectedUseCase` kör `NodeSessions.run()` direkt efter anslutningen: Info med kontroll av `proto`, notifieringar för State, läsning av State och `AUTH` med det sparade tokenet om `auth` = `1`. `PING` skickas var `hb / 3` när `hb` > 0. Varje operation har fortfarande en timeout på 10 s (`OPERATION_TIMEOUT`), lika lång som hela budgeten. |
 | Omförsök vid status `133` | ✅ `GattSession` stänger och försöker igen efter 1,5 s, högst två gånger (`CONNECT_RETRIES`). |
 | `requestMtu(247)` | ✅ `GattSession` begär MTU 247 efter parkopplingen och före `discoverServices()`. Ett avslag eller en lägre MTU är inget fel. |
 | Write With Response | ✅ `WRITE_TYPE_DEFAULT` i `AndroidGattHandle` |

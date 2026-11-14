@@ -56,6 +56,16 @@
     <string name="device_loading">Laddar enheten</string>
     <string name="device_not_found">Enheten är inte längre sparad.</string>
     <string name="device_retry">Försök igen</string>
+    <string name="device_firmware">Firmware %1$s</string>
+    <string name="device_session_opening">Loggar in på enheten…</string>
+    <string name="device_last_known">Inte ansluten. Visar senast kända värden.</string>
+    <string name="device_output_percent">%1$d %%</string>
+    <string name="device_output_degrees">%1$d°</string>
+    <string name="device_output_unknown">Stöds inte av den här versionen av appen</string>
+    <string name="device_all_off">Släck allt</string>
+    <string name="device_error_token_missing">Ange enhetens token.</string>
+    <string name="device_token_save">Spara token</string>
+    <string name="device_token_save_failed">Det gick inte att spara tokenet</string>
     <string name="connection_disconnected">Inte ansluten</string>
     <string name="connection_waiting">Väntar på enheten…</string>
     <string name="connection_connecting">Ansluter…</string>

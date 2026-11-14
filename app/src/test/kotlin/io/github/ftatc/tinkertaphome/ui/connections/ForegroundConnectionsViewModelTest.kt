@@ -3,6 +3,7 @@ package io.github.ftatc.tinkertaphome.ui.connections
 import io.github.ftatc.tinkertaphome.domain.ble.FakeDeviceConnection
 import io.github.ftatc.tinkertaphome.domain.model.ConnectionState
 import io.github.ftatc.tinkertaphome.domain.model.testDevice
+import io.github.ftatc.tinkertaphome.domain.node.FakeNodeSessions
 import io.github.ftatc.tinkertaphome.domain.repository.FakeDeviceRepository
 import io.github.ftatc.tinkertaphome.domain.usecase.KeepSavedDevicesConnectedUseCase
 import io.github.ftatc.tinkertaphome.domain.usecase.ObserveDevicesUseCase
@@ -22,8 +23,9 @@ class ForegroundConnectionsViewModelTest {
 
     private val lampa = testDevice(id = 1, name = "Lampa")
     private val connection = FakeDeviceConnection()
+    private val repository = FakeDeviceRepository(listOf(lampa))
     private val viewModel = ForegroundConnectionsViewModel(
-        KeepSavedDevicesConnectedUseCase(ObserveDevicesUseCase(FakeDeviceRepository(listOf(lampa))), connection),
+        KeepSavedDevicesConnectedUseCase(ObserveDevicesUseCase(repository), repository, connection, FakeNodeSessions(connection)),
     )
 
     private fun state() = connection.observeState(lampa.address).value
