@@ -4,12 +4,12 @@ Beslut som agenten inte får ta själv (se CLAUDE.md). Varje fråga har ett svar
 
 | # | Fråga | Gäller | Status |
 |---|---|---|---|
-| 1 | [Parkoppling och identitet](#1-parkoppling-och-identitet) | Fas 6, beslut 1.3 | 🔶 Öppen |
+| 1 | [Parkoppling och identitet](#1-parkoppling-och-identitet) | Fas 6, beslut 1.3 | ✅ Besvarad 2026-11-14 |
 | 2 | [Var tokenet kommer ifrån och var det sparas](#2-var-tokenet-kommer-ifrån-och-var-det-sparas) | Fas 6, databasschema | ✅ Besvarad 2026-11-13 |
 | 3 | [Token i telefonen](#3-token-i-telefonen) | Fas 6 | ✅ Besvarad 2026-11-13 |
 | 4 | [Vilka protokollversioner appen stöder](#4-vilka-protokollversioner-appen-stöder) | Fas 6 | ✅ Besvarad 2026-11-13 |
 | 5 | [`autoConnect` och en anslutning åt gången](#5-autoconnect-och-en-anslutning-åt-gången) | Fas 5 (uppföljning), fas 6 | ✅ Besvarad 2026-11-13 |
-| 6 | [Ordningen mellan Result och skrivbekräftelsen](#6-ordningen-mellan-result-och-skrivbekräftelsen) | Fas 6 | 🔶 Öppen, kräver test på enhet |
+| 6 | [Ordningen mellan Result och skrivbekräftelsen](#6-ordningen-mellan-result-och-skrivbekräftelsen) | Fas 6 | ✅ Besvarad 2026-11-14 |
 | 7 | [Parkopplingsknappen och glömda parkopplingar i appen](#7-parkopplingsknappen-och-glömda-parkopplingar-i-appen) | Fas 6 | ✅ Besvarad 2026-11-13 |
 
 ---
@@ -23,7 +23,9 @@ Beslut som agenten inte får ta själv (se CLAUDE.md). Varje fråga har ett svar
 - Är nodens egen adress stabil, alltså fast och publik, efter omstart och omflashning? Adressen är fortfarande appens identitet för noden.
 - Fungerar flödet med *Insufficient Encryption* och Androids automatiska parkoppling och omsändning mot ArduinoBLE? Eller ska appen alltid anropa `createBond()` uttryckligen innan första skrivningen?
 
-**Svar:** –
+**Svar (2026-11-14):** Provat med appen från steg 6.5 och 6.6 på en telefon med Android 16 (CPH2709) mot en riktig nod. Parkopplingen med uttryckligt `createBond()` fungerar. Efter parkopplingen gick det att spara noden, ansluta igen, skicka `AUTH` och styra en lysdiod. Command kräver krypterad länk, så krypteringen fungerar också vid återanslutning. Appen anropar alltid `createBond()` själv, så vägen via *Insufficient Encryption* och Androids egen parkoppling har inte provats och behövs inte.
+
+Adressen är stabil: när noden startades om anslöt appen igen till den sparade noden utan att den behövde sparas på nytt, och efter en omflashning verkade adressen vara densamma. Även efter att appen startats om ansluter den till noden som vanligt. Adressen fungerar därmed som appens identitet för noden, som beslut 1.3 förutsätter.
 
 ## 2. Var tokenet kommer ifrån och var det sparas
 
@@ -100,7 +102,7 @@ Firmware `0.1.0` saknar både `proto` och Result. Protokoll 3 är mergat till Ar
 
 **Fråga:** Stämmer det på en riktig enhet? Det kan provas med nRF Connect eller med appen när fas 6 är på plats. Om det inte stämmer behöver appen vänta på Result separat, eller så behöver firmwaren ett sekvensnummer i en ny protokollversion.
 
-**Svar:** –
+**Svar (2026-11-14):** Protokollet fungerar utan sekvensnummer. Provat med appen från steg 6.6 på en telefon med Android 16 (CPH2709): `SET` på en lysdiod och `ALL_OFF` fick sina Result och gav inget `NoReply`. Appen väntar redan på Result separat (`writeAndAwaitReply`, högst 2 s efter bekräftelsen) och börjar lyssna innan skrivningen startar, så den klarar båda ordningarna. Testet visar inte vilken av händelserna som kom först, men det spelar ingen roll för appen. Ingen ändring behövs i firmwaren.
 
 ## 7. Parkopplingsknappen och glömda parkopplingar i appen
 

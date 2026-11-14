@@ -201,7 +201,7 @@ Firmwaren rekommenderar att kommandon skickas med **Write With Response**, ett i
 - Om skrivningen bekräftas utan att något Result har kommit har noden ignorerat kommandot eftersom nedkoppling pågår. Det ska behandlas som ett fel, och anslutningen bryts strax.
 - Write Without Response fungerar också, men då kan appen inte para ihop två likadana kommandon med sina svar, och utan kryptering försvinner skrivningen tyst. Appen ska inte använda det.
 - **I appen ska svaret ändå väntas in uttryckligen.** Även om `onCharacteristicChanged` kommer före `onCharacteristicWrite` levereras notifieringar i `GattSession` via ett eget flöde, och den som väntar på skrivningen kan återupptas innan Result har behandlats. Appen ska därför vänta på ett Result med samma opcode, och samma `deviceId` när det finns, med en kort timeout, innan nästa kommando skickas.
-- Att Result kommer före bekräftelsen bygger på hur ArduinoBLE och Androids BLE-stack beter sig. Det bör verifieras på en riktig enhet (se fråga 6 i [`docs/open-questions.md`](open-questions.md)).
+- Att Result kommer före bekräftelsen bygger på hur ArduinoBLE och Androids BLE-stack beter sig. Appen väntar ändå på Result separat, och med det har kommandona fungerat på en riktig enhet med Android 16 (fråga 6 i [`docs/open-questions.md`](open-questions.md), besvarad 2026-11-14).
 
 ### Exempel
 
