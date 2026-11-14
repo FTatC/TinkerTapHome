@@ -1,17 +1,32 @@
 package io.github.ftatc.tinkertaphome.ui.device
 
 import app.cash.turbine.test
+import io.github.ftatc.tinkertaphome.domain.Outcome
 import io.github.ftatc.tinkertaphome.domain.ble.FakeDeviceConnection
 import io.github.ftatc.tinkertaphome.domain.model.ConnectionError
 import io.github.ftatc.tinkertaphome.domain.model.ConnectionState
 import io.github.ftatc.tinkertaphome.domain.model.DeviceError
 import io.github.ftatc.tinkertaphome.domain.model.testDevice
+import io.github.ftatc.tinkertaphome.domain.node.AuthToken
+import io.github.ftatc.tinkertaphome.domain.node.CommandError
+import io.github.ftatc.tinkertaphome.domain.node.FakeNodeSessions
+import io.github.ftatc.tinkertaphome.domain.node.NodeCommand
+import io.github.ftatc.tinkertaphome.domain.node.NodeFailure
+import io.github.ftatc.tinkertaphome.domain.node.NodeOutputs
+import io.github.ftatc.tinkertaphome.domain.node.NodeSession
+import io.github.ftatc.tinkertaphome.domain.node.NodeSessionError
+import io.github.ftatc.tinkertaphome.domain.node.testNodeInfo
 import io.github.ftatc.tinkertaphome.domain.repository.FakeDeviceRepository
+import io.github.ftatc.tinkertaphome.domain.usecase.AllOffUseCase
 import io.github.ftatc.tinkertaphome.domain.usecase.ObserveConnectedDevicesUseCase
 import io.github.ftatc.tinkertaphome.domain.usecase.ObserveDevicesUseCase
+import io.github.ftatc.tinkertaphome.domain.usecase.ObserveOutputsUseCase
 import io.github.ftatc.tinkertaphome.domain.usecase.RetryConnectionUseCase
+import io.github.ftatc.tinkertaphome.domain.usecase.SetOutputUseCase
+import io.github.ftatc.tinkertaphome.domain.usecase.UpdateAuthTokenUseCase
 import io.github.ftatc.tinkertaphome.ui.MainDispatcherRule
 import io.github.ftatc.tinkertaphome.ui.navigation.DeviceDetailRoute
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -28,11 +43,21 @@ class DeviceDetailViewModelTest {
     private val lampa = testDevice(id = 1, name = "Lampa")
     private val repository = FakeDeviceRepository(listOf(lampa))
     private val connection = FakeDeviceConnection()
+    private val sessions = FakeNodeSessions(connection)
+    private val retry = RetryConnectionUseCase(connection, sessions)
+
+    private val info = testNodeInfo()
+    private val led = info.outputs.single()
+    private val open = NodeSession.Open(NodeOutputs(info, listOf(0)))
 
     private fun viewModel(deviceId: Long = lampa.id) = DeviceDetailViewModel(
         route = DeviceDetailRoute(deviceId),
         observeConnectedDevices = ObserveConnectedDevicesUseCase(ObserveDevicesUseCase(repository), connection),
-        retryConnection = RetryConnectionUseCase(connection),
+        observeOutputs = ObserveOutputsUseCase(sessions),
+        retryConnection = retry,
+        setOutput = SetOutputUseCase(sessions),
+        allOff = AllOffUseCase(sessions),
+        updateAuthToken = UpdateAuthTokenUseCase(repository, retry),
     )
 
     private fun content(state: ConnectionState) = DeviceDetailUiState.Content(lampa, state)
@@ -126,5 +151,182 @@ class DeviceDetailViewModelTest {
         viewModel(deviceId = 99).onRetryClick()
 
         assertTrue(connection.disconnectCalls.isEmpty())
+    }
+
+    @Test
+    fun `shows the outputs of an open session`() = runTest {
+        sessions.setSession(lampa.address, open)
+
+        viewModel().uiState.test {
+            val shown = awaitItem() as DeviceDetailUiState.Content
+            assertEquals(open.outputs.outputs, shown.outputs)
+            assertTrue(shown.canControl)
+            assertFalse(shown.showsLastKnownValues)
+        }
+    }
+
+    @Test
+    fun `shows the last known values when the session is closed`() = runTest {
+        sessions.setSession(lampa.address, NodeSession.Closed(open.outputs))
+
+        viewModel().uiState.test {
+            val shown = awaitItem() as DeviceDetailUiState.Content
+            assertTrue(shown.showsLastKnownValues)
+            assertFalse(shown.canControl)
+        }
+    }
+
+    @Test
+    fun `sets an output through the session`() = runTest {
+        sessions.setSession(lampa.address, open)
+        val viewModel = viewModel()
+
+        viewModel.uiState.test {
+            awaitItem()
+
+            viewModel.onOutputChange(led, 1)
+            skipItems(2) // Kommandot skickas och svaret kommer.
+        }
+        assertEquals(listOf(lampa.address to NodeCommand.SetDigital(led.id, on = true)), sessions.sent)
+    }
+
+    @Test
+    fun `sends one command at a time`() = runTest {
+        sessions.setSession(lampa.address, open)
+        val reply = CompletableDeferred<Outcome<Unit, NodeFailure>>()
+        sessions.sendResult = { reply.await() }
+        val viewModel = viewModel()
+
+        viewModel.uiState.test {
+            awaitItem()
+
+            viewModel.onAllOffClick()
+            val sending = awaitItem() as DeviceDetailUiState.Content
+            assertTrue(sending.isSending)
+            assertFalse(sending.canControl)
+
+            viewModel.onOutputChange(led, 1)
+            reply.complete(Outcome.Success(Unit))
+
+            assertFalse((awaitItem() as DeviceDetailUiState.Content).isSending)
+        }
+        assertEquals(listOf(lampa.address to NodeCommand.AllOff), sessions.sent)
+    }
+
+    @Test
+    fun `shows the error when the node rejects a command`() = runTest {
+        sessions.setSession(lampa.address, open)
+        sessions.sendResult = { Outcome.Failure(NodeFailure.Command(CommandError.InvalidOutput)) }
+        val viewModel = viewModel()
+
+        viewModel.uiState.test {
+            awaitItem()
+
+            viewModel.onAllOffClick()
+            skipItems(1)
+
+            val shown = awaitItem() as DeviceDetailUiState.Content
+            assertEquals(NodeFailure.Command(CommandError.InvalidOutput), shown.commandError)
+        }
+    }
+
+    @Test
+    fun `sends nothing when the session is not open`() = runTest {
+        sessions.setSession(lampa.address, NodeSession.Closed(open.outputs))
+        val viewModel = viewModel()
+
+        viewModel.uiState.test {
+            awaitItem()
+
+            viewModel.onOutputChange(led, 1)
+            viewModel.onAllOffClick()
+            expectNoEvents()
+        }
+        assertTrue(sessions.sent.isEmpty())
+    }
+
+    @Test
+    fun `asks for a new token after a wrong token`() = runTest {
+        val wrongToken = NodeSessionError.Node(NodeFailure.Command(CommandError.AuthFailed))
+        sessions.setSession(lampa.address, NodeSession.Failed(wrongToken))
+
+        viewModel().uiState.test {
+            val shown = awaitItem() as DeviceDetailUiState.Content
+            assertTrue(shown.asksForToken)
+            assertEquals(wrongToken, shown.sessionError)
+            assertTrue(shown.canRetry)
+        }
+    }
+
+    @Test
+    fun `asks for a token when none is saved`() = runTest {
+        sessions.setSession(lampa.address, NodeSession.Failed(NodeSessionError.TokenMissing))
+
+        viewModel().uiState.test {
+            assertTrue((awaitItem() as DeviceDetailUiState.Content).asksForToken)
+        }
+    }
+
+    @Test
+    fun `does not ask for a token for other errors`() = runTest {
+        val tooOld = NodeSessionError.Node(NodeFailure.Connection(ConnectionError.PairingMissing))
+        sessions.setSession(lampa.address, NodeSession.Failed(tooOld))
+
+        viewModel().uiState.test {
+            assertFalse((awaitItem() as DeviceDetailUiState.Content).asksForToken)
+        }
+    }
+
+    @Test
+    fun `saves a new token and connects again`() = runTest {
+        sessions.setSession(lampa.address, NodeSession.Failed(NodeSessionError.TokenMissing))
+        val viewModel = viewModel()
+
+        viewModel.uiState.test {
+            awaitItem()
+
+            viewModel.onTokenChange("nytt")
+            awaitItem()
+            viewModel.onTokenSubmit()
+
+            val shown = expectMostRecentItem() as DeviceDetailUiState.Content
+            assertEquals("", shown.token)
+            assertEquals(NodeSession.Closed(), shown.session)
+        }
+        assertEquals(AuthToken.parse("nytt"), repository.tokens[lampa.address])
+        assertEquals(listOf(lampa.address), sessions.resetCalls)
+    }
+
+    @Test
+    fun `refuses an invalid token`() = runTest {
+        sessions.setSession(lampa.address, NodeSession.Failed(NodeSessionError.TokenMissing))
+        val viewModel = viewModel()
+
+        viewModel.uiState.test {
+            awaitItem()
+
+            viewModel.onTokenChange("")
+            viewModel.onTokenSubmit()
+
+            assertTrue((expectMostRecentItem() as DeviceDetailUiState.Content).tokenInvalid)
+        }
+        assertTrue(repository.tokens.isEmpty())
+    }
+
+    @Test
+    fun `shows when the new token cannot be saved`() = runTest {
+        sessions.setSession(lampa.address, NodeSession.Failed(NodeSessionError.TokenMissing))
+        repository.tokenError = DeviceError.StorageUnavailable
+        val viewModel = viewModel()
+
+        viewModel.uiState.test {
+            awaitItem()
+
+            viewModel.onTokenChange("nytt")
+            viewModel.onTokenSubmit()
+
+            assertTrue((expectMostRecentItem() as DeviceDetailUiState.Content).tokenSaveFailed)
+        }
+        assertTrue(sessions.resetCalls.isEmpty())
     }
 }

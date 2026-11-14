@@ -125,10 +125,13 @@ class FakeDeviceConnection : DeviceConnection {
         return if (accepted) answer else Outcome.Failure(ConnectionError.NoReply)
     }
 
+    /** Det [observeNotifications] skickar per characteristic. Saknas flödet skickas inget. */
+    val notifications: MutableMap<CharacteristicId, Flow<Outcome<ByteArray, ConnectionError>>> = mutableMapOf()
+
     override fun observeNotifications(
         address: BleAddress,
         characteristic: CharacteristicId,
-    ): Flow<Outcome<ByteArray, ConnectionError>> = emptyFlow()
+    ): Flow<Outcome<ByteArray, ConnectionError>> = notifications[characteristic] ?: emptyFlow()
 
     private fun stateOf(address: BleAddress): MutableStateFlow<ConnectionState> =
         states.computeIfAbsent(address) { MutableStateFlow(ConnectionState.Disconnected) }

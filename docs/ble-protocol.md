@@ -369,7 +369,7 @@ Vid återanslutning behövs inte steg 5, eftersom parkopplingen finns kvar även
 | Rekommendation | `:data` i dag |
 |---|---|
 | `autoConnect = true` för kända noder | ✅ `DeviceConnection.connect()` använder `autoConnect = true` utan tidsgräns och visar `ConnectionState.Waiting` medan Android väntar på noden. `pair()` använder `autoConnect = false` med `CONNECT_TIMEOUT`. `KeepSavedDevicesConnectedUseCase` håller sparade noder anslutna medan appen syns och ansluter igen 5 s efter ett avbrott. |
-| Steg 3–6 inom `ato` | Saknas. Appen ansluter men skickar inte `AUTH`, så en nod med `auth` = `1` kopplar ner efter 10 s och appen ansluter igen efter 5 s. Hör till steg 6.6. Varje operation har dessutom en timeout på 10 s (`OPERATION_TIMEOUT`), lika lång som hela budgeten. |
+| Steg 3–6 inom `ato` | ✅ `KeepSavedDevicesConnectedUseCase` kör `NodeSessions.run()` direkt efter anslutningen: Info med kontroll av `proto`, notifieringar för State, läsning av State och `AUTH` med det sparade tokenet om `auth` = `1`. `PING` skickas var `hb / 3` när `hb` > 0. Varje operation har fortfarande en timeout på 10 s (`OPERATION_TIMEOUT`), lika lång som hela budgeten. |
 | Omförsök vid status `133` | ✅ `GattSession` stänger och försöker igen efter 1,5 s, högst två gånger (`CONNECT_RETRIES`). |
 | `requestMtu(247)` | ✅ `GattSession` begär MTU 247 efter parkopplingen och före `discoverServices()`. Ett avslag eller en lägre MTU är inget fel. |
 | Write With Response | ✅ `WRITE_TYPE_DEFAULT` i `AndroidGattHandle` |

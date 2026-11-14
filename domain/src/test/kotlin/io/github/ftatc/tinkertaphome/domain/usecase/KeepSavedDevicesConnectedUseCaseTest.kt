@@ -6,6 +6,13 @@ import io.github.ftatc.tinkertaphome.domain.model.ConnectionError
 import io.github.ftatc.tinkertaphome.domain.model.ConnectionState
 import io.github.ftatc.tinkertaphome.domain.model.DeviceError
 import io.github.ftatc.tinkertaphome.domain.model.testDevice
+import io.github.ftatc.tinkertaphome.domain.node.AuthToken
+import io.github.ftatc.tinkertaphome.domain.node.CommandError
+import io.github.ftatc.tinkertaphome.domain.node.FakeNodeSessions
+import io.github.ftatc.tinkertaphome.domain.node.NodeError
+import io.github.ftatc.tinkertaphome.domain.node.NodeFailure
+import io.github.ftatc.tinkertaphome.domain.node.NodeSession
+import io.github.ftatc.tinkertaphome.domain.node.NodeSessionError
 import io.github.ftatc.tinkertaphome.domain.repository.FakeDeviceRepository
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.launch
@@ -14,6 +21,7 @@ import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class KeepSavedDevicesConnectedUseCaseTest {
@@ -23,8 +31,9 @@ class KeepSavedDevicesConnectedUseCaseTest {
 
     private val repository = FakeDeviceRepository(listOf(lampa, rela))
     private val connection = FakeDeviceConnection()
-    private val retry = RetryConnectionUseCase(connection)
-    private val useCase = KeepSavedDevicesConnectedUseCase(ObserveDevicesUseCase(repository), connection)
+    private val sessions = FakeNodeSessions(connection)
+    private val retry = RetryConnectionUseCase(connection, sessions)
+    private val useCase = KeepSavedDevicesConnectedUseCase(ObserveDevicesUseCase(repository), repository, connection, sessions)
 
     /** Startar use caset och returnerar jobbet, så att testet kan avbryta det som när appen går till bakgrunden. */
     private fun TestScope.start() = backgroundScope.launch { useCase() }.also { runCurrent() }
@@ -148,5 +157,84 @@ class KeepSavedDevicesConnectedUseCaseTest {
 
         assertEquals(emptyList<Any>(), connection.disconnectCalls)
         assertEquals(ConnectionState.Connected, stateOf(lampa.address))
+    }
+
+    @Test
+    fun `runs the session with the saved token right after connecting`() = runTest {
+        val token = checkNotNull(AuthToken.parse("hemligt"))
+        repository.tokens[lampa.address] = token
+        start()
+
+        assertEquals(token, sessions.runCalls.single { it.first == lampa.address }.second)
+        assertEquals(null, sessions.runCalls.single { it.first == rela.address }.second)
+        assertTrue(sessions.observe(lampa.address).value is NodeSession.Open)
+    }
+
+    @Test
+    fun `never tries a rejected token again by itself`() = runTest {
+        sessions.runError = NodeSessionError.Node(NodeFailure.Command(CommandError.AuthFailed))
+        start()
+
+        advanceTimeBy(KeepSavedDevicesConnectedUseCase.RETRY_DELAY * 10)
+
+        assertEquals(1, sessions.runCalls.count { it.first == lampa.address })
+    }
+
+    @Test
+    fun `runs the session again when its error is reset`() = runTest {
+        sessions.runError = NodeSessionError.TokenMissing
+        start()
+        sessions.runError = null
+
+        retry(lampa.address)
+        runCurrent()
+
+        assertEquals(2, sessions.runCalls.count { it.first == lampa.address })
+        assertTrue(sessions.observe(lampa.address).value is NodeSession.Open)
+    }
+
+    @Test
+    fun `stops trying when the node runs another protocol`() = runTest {
+        sessions.runError = NodeSessionError.Node(NodeFailure.Node(NodeError.NodeTooOld(2)))
+        start()
+
+        advanceTimeBy(KeepSavedDevicesConnectedUseCase.RETRY_DELAY * 10)
+
+        assertEquals(1, connection.connectCalls.count { it == lampa.address })
+    }
+
+    @Test
+    fun `tries again after a pause when the session fails for a passing reason`() = runTest {
+        sessions.runError = NodeSessionError.Node(NodeFailure.Connection(ConnectionError.RequestRejected))
+        start()
+        sessions.runError = null
+
+        advanceTimeBy(KeepSavedDevicesConnectedUseCase.RETRY_DELAY + 1.seconds)
+
+        assertEquals(2, sessions.runCalls.count { it.first == lampa.address })
+    }
+
+    @Test
+    fun `stops trying when a missing pairing stops the session`() = runTest {
+        sessions.runError = NodeSessionError.Node(NodeFailure.Connection(ConnectionError.PairingMissing))
+        start()
+
+        advanceTimeBy(KeepSavedDevicesConnectedUseCase.RETRY_DELAY * 10)
+
+        assertEquals(1, sessions.runCalls.count { it.first == lampa.address })
+    }
+
+    @Test
+    fun `tries again later when the token cannot be read`() = runTest {
+        repository.tokenError = DeviceError.StorageUnavailable
+        start()
+
+        assertTrue(sessions.runCalls.isEmpty())
+        assertTrue(lampa.address in connection.disconnectCalls)
+
+        repository.tokenError = null
+        advanceTimeBy(KeepSavedDevicesConnectedUseCase.RETRY_DELAY + 1.seconds)
+
+        assertTrue(sessions.runCalls.any { it.first == lampa.address })
     }
 }

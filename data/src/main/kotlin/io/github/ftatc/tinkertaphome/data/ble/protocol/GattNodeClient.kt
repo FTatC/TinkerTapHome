@@ -4,6 +4,7 @@ import io.github.ftatc.tinkertaphome.domain.Outcome
 import io.github.ftatc.tinkertaphome.domain.ble.DeviceConnection
 import io.github.ftatc.tinkertaphome.domain.flatMap
 import io.github.ftatc.tinkertaphome.domain.mapError
+import io.github.ftatc.tinkertaphome.domain.takeUntilFailure
 import io.github.ftatc.tinkertaphome.domain.model.BleAddress
 import io.github.ftatc.tinkertaphome.domain.model.ConnectionError
 import io.github.ftatc.tinkertaphome.domain.node.NodeClient
@@ -11,6 +12,8 @@ import io.github.ftatc.tinkertaphome.domain.node.NodeCommand
 import io.github.ftatc.tinkertaphome.domain.node.NodeFailure
 import io.github.ftatc.tinkertaphome.domain.node.NodeInfo
 import javax.inject.Inject
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 
 /**
  * TinkerTapNodes protokoll ovanpå [DeviceConnection]. Kodningen och avkodningen ligger i rena
@@ -35,6 +38,23 @@ internal class GattNodeClient @Inject constructor(
         }
             .mapError(::connectionFailure)
             .flatMap { bytes -> checkNotNull(NodeResult.decode(bytes)).toOutcome().mapError { NodeFailure.Command(it) } }
+
+    override suspend fun readState(address: BleAddress, info: NodeInfo): Outcome<List<Int>, NodeFailure> =
+        connection.read(address, NodeProtocol.STATE)
+            .mapError(::connectionFailure)
+            .flatMap { bytes -> decode(bytes, info) }
+
+    /**
+     * Följer State via notifieringar. Ett värde med fel längd avslutar flödet, eftersom appen då inte
+     * vet vilket värde som hör till vilken utgång.
+     */
+    override fun observeState(address: BleAddress, info: NodeInfo): Flow<Outcome<List<Int>, NodeFailure>> =
+        connection.observeNotifications(address, NodeProtocol.STATE)
+            .map { outcome -> outcome.mapError(::connectionFailure).flatMap { bytes -> decode(bytes, info) } }
+            .takeUntilFailure()
+
+    private fun decode(bytes: ByteArray, info: NodeInfo): Outcome<List<Int>, NodeFailure> =
+        decodeState(bytes, info).mapError { NodeFailure.Node(it) }
 
     private fun connectionFailure(error: ConnectionError): NodeFailure = NodeFailure.Connection(error)
 }

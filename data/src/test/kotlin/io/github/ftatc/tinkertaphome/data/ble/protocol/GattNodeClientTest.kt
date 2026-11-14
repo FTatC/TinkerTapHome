@@ -9,7 +9,12 @@ import io.github.ftatc.tinkertaphome.domain.node.CommandError
 import io.github.ftatc.tinkertaphome.domain.node.NodeCommand
 import io.github.ftatc.tinkertaphome.domain.node.NodeError
 import io.github.ftatc.tinkertaphome.domain.node.NodeFailure
+import io.github.ftatc.tinkertaphome.domain.node.Output
+import io.github.ftatc.tinkertaphome.domain.node.OutputId
+import io.github.ftatc.tinkertaphome.domain.node.OutputType
 import io.github.ftatc.tinkertaphome.domain.node.testNodeInfo
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -72,6 +77,62 @@ class GattNodeClientTest {
 
         assertEquals(Outcome.Failure(NodeFailure.Connection(ConnectionError.PairingMissing)), client.send(address, authenticate))
     }
+
+    @Test
+    fun `reads the values of the outputs from state`() = runTest {
+        connection.readResults[NodeProtocol.STATE] = Outcome.Success(hex("01 80 5A"))
+
+        assertEquals(Outcome.Success(listOf(1, 128, 90)), client.readState(address, threeOutputs))
+    }
+
+    @Test
+    fun `reports state that does not match the outputs`() = runTest {
+        connection.readResults[NodeProtocol.STATE] = Outcome.Success(hex("01 80"))
+
+        assertEquals(
+            Outcome.Failure(NodeFailure.Node(NodeError.StateMismatch(expectedOutputs = 3, actualValues = 2))),
+            client.readState(address, threeOutputs),
+        )
+    }
+
+    @Test
+    fun `follows the values in state notifications`() = runTest {
+        connection.notifications[NodeProtocol.STATE] = flowOf(Outcome.Success(hex("00 00 00")), Outcome.Success(hex("01 FF B4")))
+
+        assertEquals(
+            listOf(Outcome.Success(listOf(0, 0, 0)), Outcome.Success(listOf(1, 255, 180))),
+            client.observeState(address, threeOutputs).toList(),
+        )
+    }
+
+    @Test
+    fun `stops following state at the first wrong length`() = runTest {
+        connection.notifications[NodeProtocol.STATE] = flowOf(Outcome.Success(hex("01")), Outcome.Success(hex("01 02 03")))
+
+        assertEquals(
+            listOf(Outcome.Failure(NodeFailure.Node(NodeError.StateMismatch(expectedOutputs = 3, actualValues = 1)))),
+            client.observeState(address, threeOutputs).toList(),
+        )
+    }
+
+    @Test
+    fun `reports a lost connection while following state`() = runTest {
+        connection.notifications[NodeProtocol.STATE] = flowOf(Outcome.Failure(ConnectionError.ConnectionLost))
+
+        assertEquals(
+            listOf(Outcome.Failure(NodeFailure.Connection(ConnectionError.ConnectionLost))),
+            client.observeState(address, threeOutputs).toList(),
+        )
+    }
+
+    /** Noden i exemplet för State i `docs/ble-protocol.md`: `led`, `fan` och `servo`. */
+    private val threeOutputs = testNodeInfo(
+        outputs = listOf(
+            Output(OutputId(0), "led", OutputType.Digital),
+            Output(OutputId(1), "fan", OutputType.Pwm),
+            Output(OutputId(2), "servo", OutputType.Servo),
+        ),
+    )
 
     private companion object {
         const val SPEC_INFO =
