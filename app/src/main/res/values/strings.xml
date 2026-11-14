@@ -58,6 +58,9 @@
     <string name="device_loading">Loading device</string>
     <string name="device_not_found">This device is no longer saved.</string>
     <string name="device_retry">Try again</string>
+    <string name="device_repair_instructions">To pair again: if the device is listed in Android\'s Bluetooth settings, remove it there first. Then press the pairing button on the device and tap Pair again within 30 seconds.</string>
+    <string name="device_repair">Pair again</string>
+    <string name="device_repair_error_still_paired">Android is still paired with the device. Remove the device in Android\'s Bluetooth settings and try again.</string>
     <string name="device_firmware">Firmware %1$s</string>
     <string name="device_session_opening">Logging in to the device…</string>
     <string name="device_last_known">Not connected. Showing the last known values.</string>

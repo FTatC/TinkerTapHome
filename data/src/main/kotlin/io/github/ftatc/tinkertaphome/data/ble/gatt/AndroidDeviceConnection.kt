@@ -30,6 +30,8 @@ internal class AndroidDeviceConnection @Inject constructor(
 
     override fun observeState(address: BleAddress): StateFlow<ConnectionState> = session(address).state
 
+    override fun isPaired(address: BleAddress): Boolean = connector.isBonded(address.value)
+
     override suspend fun pair(address: BleAddress): Outcome<Unit, ConnectionError> =
         whenAvailable(address) { it.pair() }
 

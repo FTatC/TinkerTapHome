@@ -21,6 +21,15 @@ class AndroidDeviceConnectionTest {
     private val relay = testAddress(2)
 
     @Test
+    fun `reports whether Android is paired with the device`() {
+        connector.bonded = true
+        assertEquals(true, connection.isPaired(lamp))
+
+        connector.bonded = false
+        assertEquals(false, connection.isPaired(lamp))
+    }
+
+    @Test
     fun `fails without connecting when permissions are missing`() = runTest {
         permissions.granted = false
 

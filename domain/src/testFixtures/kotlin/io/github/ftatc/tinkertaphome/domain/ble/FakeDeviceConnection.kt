@@ -51,6 +51,11 @@ class FakeDeviceConnection : DeviceConnection {
 
     override fun observeState(address: BleAddress): StateFlow<ConnectionState> = stateOf(address)
 
+    /** Adresser som Android anser vara parkopplade, för [isPaired]. Tom från början. */
+    val pairedInAndroid: MutableSet<BleAddress> = mutableSetOf()
+
+    override fun isPaired(address: BleAddress): Boolean = address in pairedInAndroid
+
     override suspend fun pair(address: BleAddress): Outcome<Unit, ConnectionError> {
         pairCalls += address
         return open(address, ConnectionState.Connecting)

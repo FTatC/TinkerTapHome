@@ -21,6 +21,8 @@ import io.github.ftatc.tinkertaphome.domain.usecase.AllOffUseCase
 import io.github.ftatc.tinkertaphome.domain.usecase.ObserveConnectedDevicesUseCase
 import io.github.ftatc.tinkertaphome.domain.usecase.ObserveDevicesUseCase
 import io.github.ftatc.tinkertaphome.domain.usecase.ObserveOutputsUseCase
+import io.github.ftatc.tinkertaphome.domain.usecase.RepairNodeError
+import io.github.ftatc.tinkertaphome.domain.usecase.RepairNodeUseCase
 import io.github.ftatc.tinkertaphome.domain.usecase.RetryConnectionUseCase
 import io.github.ftatc.tinkertaphome.domain.usecase.SetOutputUseCase
 import io.github.ftatc.tinkertaphome.domain.usecase.UpdateAuthTokenUseCase
@@ -58,6 +60,7 @@ class DeviceDetailViewModelTest {
         setOutput = SetOutputUseCase(sessions),
         allOff = AllOffUseCase(sessions),
         updateAuthToken = UpdateAuthTokenUseCase(repository, retry),
+        repairNode = RepairNodeUseCase(connection, sessions),
     )
 
     private fun content(state: ConnectionState) = DeviceDetailUiState.Content(lampa, state)
@@ -111,11 +114,11 @@ class DeviceDetailViewModelTest {
 
     @Test
     fun `shows the error from a failed connection and offers a retry`() = runTest {
-        connection.setState(lampa.address, ConnectionState.Failed(ConnectionError.PairingMissing))
+        connection.setState(lampa.address, ConnectionState.Failed(ConnectionError.ConnectFailed(133)))
 
         viewModel().uiState.test {
             val shown = awaitItem() as DeviceDetailUiState.Content
-            assertEquals(ConnectionError.PairingMissing, shown.error)
+            assertEquals(ConnectionError.ConnectFailed(133), shown.error)
             assertTrue(shown.canRetry)
         }
     }
@@ -329,4 +332,96 @@ class DeviceDetailViewModelTest {
         }
         assertTrue(sessions.resetCalls.isEmpty())
     }
+
+    @Test
+    fun `offers to pair again instead of a retry when the phone is not paired`() = runTest {
+        connection.setState(lampa.address, ConnectionState.Failed(ConnectionError.PairingMissing))
+
+        viewModel().uiState.test {
+            val shown = awaitItem() as DeviceDetailUiState.Content
+            assertTrue(shown.canRepair)
+            assertFalse(shown.canRetry)
+        }
+    }
+
+    @Test
+    fun `offers to pair again when the node has forgotten the phone`() = runTest {
+        sessions.setSession(lampa.address, NodeSession.Failed(forgotten))
+
+        viewModel().uiState.test {
+            assertTrue((awaitItem() as DeviceDetailUiState.Content).canRepair)
+        }
+    }
+
+    @Test
+    fun `does not offer to pair again for other errors`() = runTest {
+        connection.setState(lampa.address, ConnectionState.Failed(ConnectionError.BluetoothOff))
+
+        viewModel().uiState.test {
+            val shown = awaitItem() as DeviceDetailUiState.Content
+            assertFalse(shown.canRepair)
+            assertTrue(shown.canRetry)
+        }
+    }
+
+    @Test
+    fun `pairs the node again`() = runTest {
+        sessions.setSession(lampa.address, NodeSession.Failed(forgotten))
+        val viewModel = viewModel()
+
+        viewModel.uiState.test {
+            awaitItem()
+
+            viewModel.onRepairClick()
+
+            val shown = expectMostRecentItem() as DeviceDetailUiState.Content
+            assertFalse(shown.isRepairing)
+            assertNull(shown.repairError)
+            assertFalse(shown.canRepair)
+        }
+        assertEquals(listOf(lampa.address), connection.pairCalls)
+        assertEquals(listOf(lampa.address), sessions.resetCalls)
+    }
+
+    @Test
+    fun `asks to remove the pairing in Android first`() = runTest {
+        sessions.setSession(lampa.address, NodeSession.Failed(forgotten))
+        connection.pairedInAndroid += lampa.address
+        val viewModel = viewModel()
+
+        viewModel.uiState.test {
+            awaitItem()
+
+            viewModel.onRepairClick()
+
+            val shown = expectMostRecentItem() as DeviceDetailUiState.Content
+            assertEquals(RepairNodeError.StillPairedInAndroid, shown.repairError)
+            assertTrue(shown.canRepair)
+        }
+        assertTrue(connection.pairCalls.isEmpty())
+    }
+
+    @Test
+    fun `does not pair when nothing needs it`() = runTest {
+        connection.setState(lampa.address, ConnectionState.Connected)
+        val viewModel = viewModel()
+
+        viewModel.uiState.test {
+            awaitItem()
+
+            viewModel.onRepairClick()
+            expectNoEvents()
+        }
+        assertTrue(connection.pairCalls.isEmpty())
+    }
+
+    @Test
+    fun `keeps the pairing form while the app pairs`() {
+        val pairing = DeviceDetailUiState.Content(lampa, ConnectionState.Connecting, isRepairing = true)
+
+        assertTrue(pairing.showsRepairForm)
+        assertFalse(pairing.canRepair)
+    }
+
+    private val forgotten = NodeSessionError.Node(NodeFailure.Connection(ConnectionError.PairingMissing))
 }
