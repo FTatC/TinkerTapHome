@@ -18,7 +18,7 @@
 | 4 Spara en enhet | ✅ Klar | #15, #19 |
 | 5 Anslutning och GATT-kö | ✅ Klar | #27, #28 |
 | 6 Styrning via enhetsprotokollet | ✅ Klar. Fråga 1 och 6 är verifierade på hårdvara. | #41–#47 |
-| 7 Utbyggnad | ⏳ Pågår. Steg 7.1 (CI) är klart, 7.2 (arkitekturtest) är nästa (se fas 7). | #48, #49 |
+| 7 Utbyggnad | ⏳ Pågår. Steg 7.1 (CI) och 7.2 (arkitekturtest) är klara, 7.3 (parkoppla igen) är nästa (se fas 7). | #48, #49 |
 
 **Härdning utanför planen**, gjord mellan fas 4 och 5:
 - #16: Fel från externa anrop hanteras i stället för att tappas eller krascha appen.
@@ -252,7 +252,7 @@ Fas 6 gjorde kärnfunktionen klar: att hitta, spara, ansluta till och styra node
 | Steg | Branch | Innehåll | Tester |
 |---|---|---|---|
 | ✅ 7.1 | `chore/ci` | **CI.** `.github/workflows/ci.yml` kör `./gradlew test lint assembleDebug assembleDebugAndroidTest` på varje PR mot `main` och vid push till `main`, med beroendeverifieringen påslagen. Actions låses till en commit-SHA. Branch protection på `main` kräver att jobbet är grönt. Besluten finns nedan. | Workflowen körs på PR:en som lägger till den. |
-| 7.2 | `chore/architecture-test` | **Arkitekturtest.** 🔶 Konsist, ett nytt testberoende. Tester som upptäcker `public`-deklarationer i `:data`, Android-importer i `:domain`, Kotlins `Result` i domänens API:er och `object` med muterbart tillstånd. | Testerna körs av `./gradlew test` och därmed i CI. Varje regel provas mot ett exempel som bryter mot den. |
+| ✅ 7.2 | `chore/architecture-test` | **Arkitekturtest.** Konsist `0.18.1` (beslut 2026-11-14), byggd mot Kotlin `2.4.21`, i en egen modul `:architecture` som bara har tester. Reglerna: allt på toppnivå i `:data` är `internal`, domänens API:er använder inte Kotlins `Result`, och inget `object`, `companion object` eller toppnivå har muterbart tillstånd. Android-importer i `:domain` behöver inget test, eftersom `:domain` är en ren JVM-modul och kompilatorn redan stoppar dem. | `ArchitectureTest` kör reglerna mot appens kod. `ArchitectureRulesTest` provar varje regel mot exempel i `architecture/src/test/resources/violations/` som bryter mot den. Båda körs av `./gradlew test` och därmed i CI. |
 | 7.3 | `feature/repair-node` | **Parkoppla en sparad nod igen.** Löser den öppna frågan från fas 6: när noden har glömt telefonen (`PairingMissing`) visar detaljvyn "Parkoppla igen", som går igenom knappen på noden och parkopplingen utan att spara noden på nytt. Användaren måste först ta bort noden i Bluetooth-inställningarna, eftersom appen inte kan ta bort en parkoppling. 🔶 Om flödet ska ligga i detaljvyn eller i spara-dialogen. | JVM-tester för use case och ViewModel, Compose-tester, manuellt mot en nod vars parkopplingar har raderats. |
 | 7.4 | `feature/settings` | **Inställningar.** DataStore, som redan finns i versionskatalogen, bakom ett interface i `:domain`. 🔶 Vilka inställningar, till exempel skanningens längd och tema (ljust, mörkt eller systemets). | JVM-tester för repository med en fake och för ViewModel, Compose-tester för inställningsskärmen. |
 | 7.5 | `feature/rooms` | **Rum.** En tabell för rum och en kolumn för rum i `devices`. Databasversion 3 med en migration. Enhetslistan grupperas per rum. 🔶 Om en nod bara kan ligga i ett rum. | `MigrationTest` och DAO-tester med `connectedAndroidTest`, JVM-tester för use cases och ViewModel. |

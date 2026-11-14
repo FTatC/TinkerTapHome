@@ -39,6 +39,7 @@ Koden delas i tre lager, och varje lager är en egen Gradle-modul. Beroenden gå
 - **`:app`** (paket `…tinkertaphome.ui`): Composables och ViewModels. Ingångspunkterna `TinkerTapApplication` och `MainActivity` ligger i rotpaketet `…tinkertaphome`. Ingen direkt åtkomst till BLE, databas eller Android-system-API:er. Enda undantaget är behörighetsflödet (se Regler). Beror på `:domain`, och på `:data` enbart för att Hilt ska hitta dess moduler. Klasser i `:data` används aldrig direkt från `:app`.
 - **`:domain`** (Kotlin/JVM-modul, paket `…tinkertaphome.domain`): Modeller, use cases och repository-interface. Ren Kotlin utan Android-importer. Enda tillåtna beroenden är `kotlinx-coroutines-core` och `javax.inject` (för `@Inject` på use cases). Fakes som delas mellan modulernas tester ligger i `src/testFixtures`.
 - **`:data`** (Android-biblioteksmodul, paket `…tinkertaphome.data`): Repository-implementationer, BLE-klient, Room-DAO:er, DataStore och Hilt-moduler som binder implementationerna till interfacen i `:domain`. **Allt i `:data` är `internal`**: klasser, interface, DAO:er, entiteter och toppnivåfunktioner. `:app` kommer bara åt datalagret via interfacen i `:domain`, och Hilt sköter kopplingen. Nya deklarationer i `:data` ska också vara `internal`, annars kan UI-lagret gå förbi `domain`.
+- **`:architecture`** (Kotlin/JVM-modul, bara tester): arkitekturtester med Konsist som läser källkoden i de andra modulerna och fallerar om en regel här bryts, till exempel en deklaration i `:data` som inte är `internal`. Modulen beror inte på någon annan modul. Fallerar ett av testerna ska koden rättas, inte testet.
 
 **Byggkonfiguration:** Gemensamma inställningar (SDK-nivåer, Java-version, testkörare och standardtestberoenden: JUnit, coroutines-test, Turbine, AndroidX Test) ligger i konventionspluginsen i `build-logic/convention/`:
 
@@ -46,7 +47,7 @@ Koden delas i tre lager, och varje lager är en egen Gradle-modul. Beroenden gå
 |---|---|
 | `tinkertap.android.application` | `:app` |
 | `tinkertap.android.library` | `:data` och nya Android-moduler |
-| `tinkertap.jvm.library` | `:domain` och nya rena Kotlin-moduler |
+| `tinkertap.jvm.library` | `:domain`, `:architecture` och nya rena Kotlin-moduler |
 
 Nya moduler använder ett av pluginsen. Kopiera inte `compileSdk`, `minSdk`, `compileOptions` eller standardtestberoenden till en moduls `build.gradle.kts`. Modulen sätter bara det som är unikt för den, till exempel namespace och egna beroenden.
 
