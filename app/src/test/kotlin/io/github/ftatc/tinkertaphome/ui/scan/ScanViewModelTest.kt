@@ -3,7 +3,9 @@ package io.github.ftatc.tinkertaphome.ui.scan
 import io.github.ftatc.tinkertaphome.domain.Outcome
 import io.github.ftatc.tinkertaphome.domain.model.BleError
 import io.github.ftatc.tinkertaphome.domain.model.testScannedDevice
+import io.github.ftatc.tinkertaphome.domain.model.ScanDuration
 import io.github.ftatc.tinkertaphome.domain.repository.FakeDeviceRepository
+import io.github.ftatc.tinkertaphome.domain.repository.FakeSettingsRepository
 import io.github.ftatc.tinkertaphome.domain.ble.FakeDeviceScanner
 import io.github.ftatc.tinkertaphome.domain.usecase.ScanForDevicesUseCase
 import io.github.ftatc.tinkertaphome.ui.MainDispatcherRule
@@ -25,7 +27,7 @@ class ScanViewModelTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     private val scanner = FakeDeviceScanner()
-    private val viewModel = ScanViewModel(ScanForDevicesUseCase(scanner, FakeDeviceRepository()))
+    private val viewModel = ScanViewModel(ScanForDevicesUseCase(scanner, FakeDeviceRepository(), FakeSettingsRepository()))
 
     @Test
     fun `does not scan until started`() {
@@ -58,7 +60,7 @@ class ScanViewModelTest {
         scanner.emit(Outcome.Success(listOf(testScannedDevice(id = 1))))
         viewModel.startScan()
 
-        advanceTimeBy(ScanForDevicesUseCase.SCAN_DURATION + 1.seconds)
+        advanceTimeBy(ScanDuration.DEFAULT.duration + 1.seconds)
 
         assertEquals(ScanUiState(devices = listOf(testScannedDevice(id = 1)), isScanning = false), viewModel.uiState.value)
         assertFalse(scanner.isScanning)

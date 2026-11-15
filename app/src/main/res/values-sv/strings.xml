@@ -86,4 +86,16 @@
     <string name="connection_error_characteristic_not_found">Enheten stöder inte den här funktionen.</string>
     <string name="connection_error_rejected">Bluetooth är upptaget. Försök igen.</string>
     <string name="connection_error_operation_failed">Enheten rapporterade ett fel (%1$d).</string>
+    <string name="settings_title">Inställningar</string>
+    <string name="settings_scan_section">Skanning</string>
+    <string name="settings_scan_duration">Skanningens längd</string>
+    <string name="settings_scan_seconds">%1$d s</string>
+    <string name="settings_only_nodes">Visa bara TinkerTap-noder</string>
+    <string name="settings_only_nodes_summary">Andra Bluetooth-enheter går ändå inte att spara.</string>
+    <string name="settings_appearance_section">Utseende</string>
+    <string name="settings_theme">Tema</string>
+    <string name="settings_theme_system">Följ systemet</string>
+    <string name="settings_theme_light">Ljust</string>
+    <string name="settings_theme_dark">Mörkt</string>
+    <string name="settings_save_failed">Det gick inte att spara inställningen</string>
 </resources>

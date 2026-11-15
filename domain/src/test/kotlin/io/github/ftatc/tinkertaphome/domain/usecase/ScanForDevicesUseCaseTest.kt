@@ -3,12 +3,15 @@ package io.github.ftatc.tinkertaphome.domain.usecase
 import app.cash.turbine.ReceiveTurbine
 import app.cash.turbine.test
 import io.github.ftatc.tinkertaphome.domain.Outcome
+import io.github.ftatc.tinkertaphome.domain.model.AppSettings
 import io.github.ftatc.tinkertaphome.domain.model.BleError
 import io.github.ftatc.tinkertaphome.domain.model.DeviceError
+import io.github.ftatc.tinkertaphome.domain.model.ScanDuration
 import io.github.ftatc.tinkertaphome.domain.model.ScannedDevice
 import io.github.ftatc.tinkertaphome.domain.model.testDevice
 import io.github.ftatc.tinkertaphome.domain.model.testScannedDevice
 import io.github.ftatc.tinkertaphome.domain.repository.FakeDeviceRepository
+import io.github.ftatc.tinkertaphome.domain.repository.FakeSettingsRepository
 import io.github.ftatc.tinkertaphome.domain.ble.FakeDeviceScanner
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -24,7 +27,8 @@ class ScanForDevicesUseCaseTest {
 
     private val scanner = FakeDeviceScanner()
     private val repository = FakeDeviceRepository()
-    private val scanForDevices = ScanForDevicesUseCase(scanner, repository)
+    private val settings = FakeSettingsRepository()
+    private val scanForDevices = ScanForDevicesUseCase(scanner, repository, settings)
 
     @Test
     fun `sorts found devices with the strongest signal first`() = runTest {
@@ -121,12 +125,49 @@ class ScanForDevicesUseCaseTest {
             awaitItem()
             assertTrue(scanner.isScanning)
 
-            advanceTimeBy(ScanForDevicesUseCase.SCAN_DURATION - 1.seconds)
+            advanceTimeBy(ScanDuration.DEFAULT.duration - 1.seconds)
             assertTrue(scanner.isScanning)
 
             advanceTimeBy(2.seconds)
             awaitComplete()
             assertFalse(scanner.isScanning)
+        }
+    }
+
+    @Test
+    fun `stops after the scan duration the user has chosen`() = runTest {
+        settings.settings.value = AppSettings(scanDuration = ScanDuration.SHORT)
+        scanner.emit(Outcome.Success(emptyList()))
+
+        scanForDevices().test {
+            awaitItem()
+
+            advanceTimeBy(ScanDuration.SHORT.duration - 1.seconds)
+            assertTrue(scanner.isScanning)
+
+            advanceTimeBy(2.seconds)
+            awaitComplete()
+        }
+    }
+
+    @Test
+    fun `shows other devices than nodes by default`() = runTest {
+        scanner.emit(Outcome.Success(listOf(testScannedDevice(id = 1), testScannedDevice(id = 2, isTinkerTapNode = false))))
+
+        scanForDevices().test {
+            assertEquals(listOf(1L, 2L), awaitDeviceIds())
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `shows only nodes when the user has chosen it`() = runTest {
+        settings.settings.value = AppSettings(onlyNodesInScan = true)
+        scanner.emit(Outcome.Success(listOf(testScannedDevice(id = 1), testScannedDevice(id = 2, isTinkerTapNode = false))))
+
+        scanForDevices().test {
+            assertEquals(listOf(1L), awaitDeviceIds())
+            cancelAndIgnoreRemainingEvents()
         }
     }
 

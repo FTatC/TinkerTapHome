@@ -8,7 +8,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import io.github.ftatc.tinkertaphome.ui.connections.KeepConnectedWhileVisible
 import io.github.ftatc.tinkertaphome.ui.navigation.TinkerTapNavHost
 import io.github.ftatc.tinkertaphome.ui.permissions.BlePermissionGate
-import io.github.ftatc.tinkertaphome.ui.theme.TinkerTapTheme
+import io.github.ftatc.tinkertaphome.ui.theme.AppTheme
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -17,7 +17,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            TinkerTapTheme {
+            AppTheme {
                 BlePermissionGate {
                     KeepConnectedWhileVisible()
                     TinkerTapNavHost()

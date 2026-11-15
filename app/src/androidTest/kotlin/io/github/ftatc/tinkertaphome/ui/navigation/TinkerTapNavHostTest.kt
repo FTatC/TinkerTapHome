@@ -35,12 +35,14 @@ class TinkerTapNavHostTest {
     private fun showNavHost() {
         composeRule.setContent {
             TinkerTapNavHost(
-                deviceListScreen = { onScanClick, onDeviceClick ->
+                deviceListScreen = { onScanClick, onDeviceClick, onSettingsClick ->
                     Column {
                         Button(onClick = onScanClick) { Text(DEVICE_LIST) }
                         Button(onClick = { onDeviceClick(DEVICE_ID) }) { Text(SAVED_DEVICE) }
+                        Button(onClick = onSettingsClick) { Text(OPEN_SETTINGS) }
                     }
                 },
+                settingsScreen = { Text(SETTINGS) },
                 deviceDetailScreen = { route ->
                     openedDetail = route
                     Text(DETAIL)
@@ -96,6 +98,18 @@ class TinkerTapNavHostTest {
 
         composeRule.onNodeWithText(DEVICE_LIST).assertIsDisplayed()
         composeRule.onNodeWithText(SCAN).assertDoesNotExist()
+    }
+
+    @Test
+    fun theSettingsIconOpensTheSettingsAndBackReturns() {
+        showNavHost()
+
+        composeRule.onNodeWithText(OPEN_SETTINGS).performClick()
+        composeRule.onNodeWithText(SETTINGS).assertIsDisplayed()
+
+        composeRule.runOnUiThread { composeRule.activity.onBackPressedDispatcher.onBackPressed() }
+
+        composeRule.onNodeWithText(DEVICE_LIST).assertIsDisplayed()
     }
 
     @Test
@@ -171,5 +185,7 @@ class TinkerTapNavHostTest {
         const val SCAN = "Sökskärm"
         const val SAVE = "Spara"
         const val CANCEL = "Avbryt"
+        const val OPEN_SETTINGS = "Öppna inställningar"
+        const val SETTINGS = "Inställningsskärm"
     }
 }

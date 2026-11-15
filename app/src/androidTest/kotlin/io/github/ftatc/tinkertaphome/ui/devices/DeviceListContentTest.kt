@@ -26,14 +26,29 @@ class DeviceListContentTest {
     val composeRule = createComposeRule()
 
     private var scanClicked = false
+    private var settingsClicked = false
     private var clickedDeviceId: Long? = null
 
     private fun string(id: Int) = InstrumentationRegistry.getInstrumentation().targetContext.getString(id)
 
     private fun show(uiState: DeviceListUiState) {
         composeRule.setContent {
-            TinkerTapTheme { DeviceListContent(uiState = uiState, onScanClick = { scanClicked = true }, onDeviceClick = { clickedDeviceId = it }) }
+            TinkerTapTheme { DeviceListContent(
+                    uiState = uiState,
+                    onScanClick = { scanClicked = true },
+                    onDeviceClick = { clickedDeviceId = it },
+                    onSettingsClick = { settingsClicked = true },
+                ) }
         }
+    }
+
+    @Test
+    fun theSettingsIconOpensTheSettings() {
+        show(DeviceListUiState.Empty)
+
+        composeRule.onNodeWithContentDescription(string(R.string.settings_title)).performClick()
+
+        assertTrue(settingsClicked)
     }
 
     @Test
