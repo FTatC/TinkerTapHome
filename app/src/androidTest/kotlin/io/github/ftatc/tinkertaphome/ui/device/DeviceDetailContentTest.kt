@@ -129,13 +129,21 @@ class DeviceDetailContentTest {
 
     @Test
     fun aFailedConnectionShowsTheErrorAndCanBeRetried() {
-        showDevice(ConnectionState.Failed(ConnectionError.ConnectFailed(133)))
+        showDevice(ConnectionState.Failed(ConnectionError.ConnectFailed(42)))
 
         composeRule.onNodeWithText(string(R.string.connection_failed)).assertIsDisplayed()
-        composeRule.onNodeWithText(string(R.string.connection_error_connect_failed, 133)).assertIsDisplayed()
+        // En status utan egen text visas med statusen.
+        composeRule.onNodeWithText(string(R.string.connection_error_connect_failed, 42)).assertIsDisplayed()
         composeRule.onNodeWithText(string(R.string.device_retry)).performClick()
 
         assertEquals(1, retryClicks)
+    }
+
+    @Test
+    fun aConnectionClosedByTheDeviceIsExplained() {
+        showDevice(ConnectionState.Failed(ConnectionError.ConnectFailed(19)))
+
+        composeRule.onNodeWithText(string(R.string.connection_error_closed_by_device)).assertIsDisplayed()
     }
 
     @Test

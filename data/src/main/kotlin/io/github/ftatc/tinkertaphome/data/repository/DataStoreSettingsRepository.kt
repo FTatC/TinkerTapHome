@@ -16,9 +16,12 @@ import io.github.ftatc.tinkertaphome.domain.model.ThemeMode
 import io.github.ftatc.tinkertaphome.domain.repository.SettingsRepository
 import java.io.IOException
 import javax.inject.Inject
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.retryWhen
 
 /**
  * Inställningarna i DataStore. Värdena sparas som enkla typer: skanningens längd i sekunder och
@@ -29,9 +32,21 @@ internal class DataStoreSettingsRepository @Inject constructor(
     private val dataStore: DataStore<Preferences>,
 ) : SettingsRepository {
 
+    /**
+     * Går filen inte att läsa skickas standardvärdena, och sedan försöker flödet igen efter
+     * [READ_RETRY_DELAY]. Flödet tar alltså aldrig slut av ett läsfel, så att senare ändringar,
+     * till exempel av temat, fortfarande når gränssnittet.
+     */
     override fun observeSettings(): Flow<AppSettings> =
         dataStore.data
-            .catch { error -> if (error is IOException) emit(emptyPreferences()) else throw error }
+            .retryWhen { error, _ ->
+                (error is IOException).also { canRetry ->
+                    if (canRetry) {
+                        emit(emptyPreferences())
+                        delay(READ_RETRY_DELAY)
+                    }
+                }
+            }
             .map { it.toAppSettings() }
 
     override suspend fun update(transform: (AppSettings) -> AppSettings): Outcome<Unit, SettingsError> =
@@ -41,6 +56,11 @@ internal class DataStoreSettingsRepository @Inject constructor(
         } catch (_: IOException) {
             Outcome.Failure(SettingsError.StorageUnavailable)
         }
+
+    companion object {
+        /** Paus innan inställningarna läses igen efter ett fel. */
+        val READ_RETRY_DELAY: Duration = 5.seconds
+    }
 }
 
 private val SCAN_DURATION_SECONDS = intPreferencesKey("scan_duration_seconds")

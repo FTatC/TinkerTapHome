@@ -90,10 +90,18 @@ class ScanContentTest {
     }
 
     @Test
-    fun scanFailureShowsTheErrorCode() {
-        show(ScanUiState(scanError = BleError.ScanFailed(code = 2)))
+    fun scanningTooOftenAsksTheUserToWait() {
+        show(ScanUiState(scanError = BleError.ScanFailed(code = 6)))
 
-        composeRule.onNodeWithText(string(R.string.scan_error_failed, 2)).assertIsDisplayed()
+        composeRule.onNodeWithText(string(R.string.scan_error_too_frequent)).assertIsDisplayed()
+    }
+
+    @Test
+    fun scanFailureShowsTheErrorCode() {
+        show(ScanUiState(scanError = BleError.ScanFailed(code = 99)))
+
+        // En kod utan egen text visas med koden.
+        composeRule.onNodeWithText(string(R.string.scan_error_failed, 99)).assertIsDisplayed()
     }
 
     @Test

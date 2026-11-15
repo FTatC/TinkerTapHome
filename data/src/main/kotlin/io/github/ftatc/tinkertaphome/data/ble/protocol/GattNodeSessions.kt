@@ -19,6 +19,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
@@ -126,10 +127,15 @@ internal class GattNodeSessions @Inject constructor(
     /**
      * Skickar `PING` så att noden inte går till säkert läge. Ett misslyckat `PING` stoppar inte
      * sessionen: bryts anslutningen märks det i State.
+     *
+     * Intervallet är aldrig kortare än [MIN_HEARTBEAT_INTERVAL]. En nod med en mycket kort heartbeat
+     * skulle annars få appen att skicka `PING` utan uppehåll, så att GATT-kön aldrig hinner med
+     * användarens kommandon.
      */
     private suspend fun sendHeartbeats(address: BleAddress, timeout: Duration) {
+        val interval = (timeout / HEARTBEAT_DIVISOR).coerceAtLeast(MIN_HEARTBEAT_INTERVAL)
         while (true) {
-            delay(timeout / HEARTBEAT_DIVISOR)
+            delay(interval)
             client.send(address, NodeCommand.Ping)
         }
     }
@@ -156,6 +162,9 @@ internal class GattNodeSessions @Inject constructor(
     companion object {
         /** `PING` skickas med en tredjedel av nodens heartbeat som intervall (`docs/ble-protocol.md`). */
         const val HEARTBEAT_DIVISOR = 3
+
+        /** Kortaste tiden mellan två `PING`, oavsett hur kort nodens heartbeat är. */
+        val MIN_HEARTBEAT_INTERVAL: Duration = 500.milliseconds
     }
 }
 
