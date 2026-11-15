@@ -2,10 +2,12 @@ package io.github.ftatc.tinkertaphome.domain.usecase
 
 import io.github.ftatc.tinkertaphome.domain.Outcome
 import io.github.ftatc.tinkertaphome.domain.ble.DeviceScanner
+import io.github.ftatc.tinkertaphome.domain.ble.ScanPower
 import io.github.ftatc.tinkertaphome.domain.map
 import io.github.ftatc.tinkertaphome.domain.model.AppSettings
 import io.github.ftatc.tinkertaphome.domain.model.BleAddress
 import io.github.ftatc.tinkertaphome.domain.model.BleError
+import io.github.ftatc.tinkertaphome.domain.model.ScanDuration
 import io.github.ftatc.tinkertaphome.domain.model.ScannedDevice
 import io.github.ftatc.tinkertaphome.domain.repository.DeviceRepository
 import io.github.ftatc.tinkertaphome.domain.repository.SettingsRepository
@@ -25,8 +27,9 @@ import kotlinx.coroutines.withTimeoutOrNull
  *
  * Skanningen stoppas automatiskt efter den längd som användaren har valt ([AppSettings.scanDuration])
  * för att spara batteri, och flödet avslutas då normalt. Har användaren valt att bara visa noder
- * filtreras andra enheter bort. Inställningarna läses när skanningen startar. Vid fel skickas felet
- * och flödet avslutas direkt.
+ * filtreras andra enheter bort. Den längsta skanningen använder [ScanPower.BALANCED], så att den
+ * inte drar onödigt mycket ström. Inställningarna läses när skanningen startar. Vid fel skickas
+ * felet och flödet avslutas direkt.
  */
 class ScanForDevicesUseCase @Inject constructor(
     private val scanner: DeviceScanner,
@@ -38,7 +41,7 @@ class ScanForDevicesUseCase @Inject constructor(
     }
 
     private fun scan(settings: AppSettings): Flow<Outcome<List<ScannedDevice>, BleError>> =
-        combine(scanner.scan(), savedAddresses()) { scan, saved ->
+        combine(scanner.scan(settings.scanDuration.power()), savedAddresses()) { scan, saved ->
             scan.map { it.newDevicesStrongestFirst(saved).onlyNodesIf(settings.onlyNodesInScan) }
         }
             // Utan detta skulle combine fortsätta lyssna på de sparade enheterna efter ett fel.
@@ -56,6 +59,8 @@ class ScanForDevicesUseCase @Inject constructor(
 
 private fun List<ScannedDevice>.newDevicesStrongestFirst(saved: Set<BleAddress>): List<ScannedDevice> =
     filterNot { it.address in saved }.sortedWith(compareByDescending<ScannedDevice> { it.rssi }.thenBy { it.address.value })
+
+private fun ScanDuration.power(): ScanPower = if (this == ScanDuration.LONG) ScanPower.BALANCED else ScanPower.HIGH
 
 private fun List<ScannedDevice>.onlyNodesIf(onlyNodes: Boolean): List<ScannedDevice> =
     if (onlyNodes) filter { it.isTinkerTapNode } else this

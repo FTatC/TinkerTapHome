@@ -410,6 +410,15 @@ class GattSessionTest {
     }
 
     @Test
+    fun `a request on a closed connection is reported as not connected`() = runTest {
+        connected()
+
+        connector.requestResult = { GattRequest.NOT_CONNECTED }
+
+        assertEquals(failure(ConnectionError.NotConnected), session.read(lamp))
+    }
+
+    @Test
     fun `read fails without a request when not connected`() = runTest {
         assertEquals(failure(ConnectionError.NotConnected), session.read(lamp))
         assertTrue(connector.requests.isEmpty())

@@ -7,6 +7,7 @@ import android.bluetooth.le.ScanResult
 import android.bluetooth.le.ScanSettings
 import android.content.Context
 import dagger.hilt.android.qualifiers.ApplicationContext
+import io.github.ftatc.tinkertaphome.domain.ble.ScanPower
 import javax.inject.Inject
 import kotlinx.coroutines.flow.Flow
 
@@ -26,14 +27,14 @@ internal class AndroidBleScanSource @Inject constructor(
 
     override fun isBluetoothEnabled(): Boolean = adapter?.isEnabled == true
 
-    override fun scanEvents(): Flow<RawScanEvent> = scanEventFlow { listener ->
+    override fun scanEvents(power: ScanPower): Flow<RawScanEvent> = scanEventFlow { listener ->
         val scanner = adapter?.bluetoothLeScanner ?: return@scanEventFlow ScanStart.BluetoothOff
-        startScan(scanner, listener.toScanCallback())
+        startScan(scanner, power.toScanSettings(), listener.toScanCallback())
     }
 
-    private fun startScan(scanner: BluetoothLeScanner, callback: ScanCallback): ScanStart =
+    private fun startScan(scanner: BluetoothLeScanner, settings: ScanSettings, callback: ScanCallback): ScanStart =
         try {
-            scanner.startScan(null, scanSettings, callback)
+            scanner.startScan(null, settings, callback)
             ScanStart.Started { stopScan(scanner, callback) }
         } catch (_: SecurityException) {
             ScanStart.PermissionDenied
@@ -55,13 +56,17 @@ internal class AndroidBleScanSource @Inject constructor(
             // Redan stoppad av Android.
         }
     }
-
-    private companion object {
-        val scanSettings: ScanSettings = ScanSettings.Builder()
-            .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
-            .build()
-    }
 }
+
+private fun ScanPower.toScanSettings(): ScanSettings =
+    ScanSettings.Builder()
+        .setScanMode(
+            when (this) {
+                ScanPower.HIGH -> ScanSettings.SCAN_MODE_LOW_LATENCY
+                ScanPower.BALANCED -> ScanSettings.SCAN_MODE_BALANCED
+            },
+        )
+        .build()
 
 private fun ScanListener.toScanCallback(): ScanCallback = object : ScanCallback() {
     override fun onScanResult(callbackType: Int, result: ScanResult) {

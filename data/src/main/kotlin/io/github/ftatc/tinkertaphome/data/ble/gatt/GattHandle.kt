@@ -80,4 +80,7 @@ internal enum class GattRequest {
 
     /** Android nekade operationen eftersom BLE-behörigheten saknas. */
     PERMISSION_DENIED,
+
+    /** Anslutningen är stängd, så operationen kan inte startas. */
+    NOT_CONNECTED,
 }

@@ -34,6 +34,22 @@ private typealias GattOutcome<T> = Outcome<T, ConnectionError>
  *
  * Alla operationer går genom en [GattOperationQueue], så att bara en GATT-operation är igång åt
  * gången. Händelser från Android kan komma från vilken tråd som helst och tas emot i [onEvent].
+ *
+ * Tillstånden i [state] och vad som ändrar dem:
+ * ```
+ * Disconnected ──connect()──▶ Waiting ──enheten svarar──▶ Connecting ──klar──▶ Connected
+ *      ▲          pair()  ──────────────────────────────▶ Connecting                │
+ *      │                                                                           │
+ *      ├──── disconnect(), från alla tillstånd                                     │
+ *      │                                                                           ▼
+ *      └──── disconnect() ◀──── Failed(fel) ◀──── avbrott, timeout eller fel vid anslutning
+ * ```
+ * - `connect()` och `pair()` kan också startas från Failed, till exempel när appen försöker igen.
+ * - `connect()` och `pair()` körs i kön och ändrar tillståndet där. [markConnected] sätter
+ *   Connected bara om tillståndet fortfarande är Connecting, så att ett avbrott under tiden vinner.
+ * - [dropConnection] körs från Androids tråd vid avbrott och från kön vid timeout. Den stänger
+ *   handtaget en gång, med `getAndSet(null)`, och sätter Failed.
+ * - [disconnect] kan anropas från vilken tråd som helst och avslutar en väntande operation.
  */
 internal class GattSession(
     private val address: String,
@@ -208,6 +224,10 @@ internal class GattSession(
         }
     }
 
+    /**
+     * Ber Android att börja ansluta. Lyckas det sparas det nya handtaget i [handle], så att
+     * operationerna och [disconnect] når anslutningen. Annars returneras felet.
+     */
     private fun startConnection(autoConnect: Boolean): ConnectionError? =
         when (val started = connector.connect(address, autoConnect, ::onEvent)) {
             is GattConnectStart.Started -> null.also { handle.set(started.handle) }
@@ -356,7 +376,12 @@ internal class GattSession(
         /** Lång, eftersom användaren kan behöva bekräfta parkopplingen i en dialog. */
         val BOND_TIMEOUT: Duration = 60.seconds
 
-        val OPERATION_TIMEOUT: Duration = 10.seconds
+        /**
+         * Hur länge en enskild läsning, skrivning eller annan operation får ta. Kort jämfört med
+         * nodens tid för `AUTH` (`ato`, standard 10 s), så att en operation som hänger inte tar hela
+         * den tiden och noden hinner koppla ner innan appen märker felet.
+         */
+        val OPERATION_TIMEOUT: Duration = 5.seconds
 
         /**
          * Hur länge appen väntar på svaret efter att en skrivning har bekräftats. TinkerTapNode skickar
@@ -413,4 +438,5 @@ private fun GattRequest.toError(characteristic: CharacteristicId? = null): Conne
         characteristic?.let(ConnectionError::CharacteristicNotFound) ?: ConnectionError.RequestRejected
     GattRequest.REJECTED -> ConnectionError.RequestRejected
     GattRequest.PERMISSION_DENIED -> ConnectionError.PermissionMissing
+    GattRequest.NOT_CONNECTED -> ConnectionError.NotConnected
 }

@@ -52,13 +52,14 @@ private fun DigitalControl(
     onOutputChange: (Output, Int) -> Unit,
     modifier: Modifier,
 ) {
+    val label = outputLabel(output.output)
     Row(modifier = modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text(output.output.name, modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
+        Text(label, modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
         Switch(
             checked = output.value != 0,
             onCheckedChange = { on -> onOutputChange(output.output, if (on) 1 else 0) },
             enabled = enabled,
-            modifier = Modifier.semantics { contentDescription = output.output.name },
+            modifier = Modifier.semantics { contentDescription = label },
         )
     }
 }
@@ -77,10 +78,12 @@ private fun SliderControl(
     valueLabel: @Composable (Int) -> String,
 ) {
     var dragged by remember { mutableStateOf<Float?>(null) }
-    val shown = dragged ?: output.value.toFloat()
+    val label = outputLabel(output.output)
+    // Ett värde i State utanför intervallet visas som gränsen, precis som reglaget själv visar det.
+    val shown = dragged ?: output.value.coerceIn(range).toFloat()
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(output.output.name, modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
+            Text(label, modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
             Text(valueLabel(shown.roundToInt()), style = MaterialTheme.typography.bodyMedium)
         }
         Slider(
@@ -92,7 +95,7 @@ private fun SliderControl(
             },
             valueRange = range.first.toFloat()..range.last.toFloat(),
             enabled = enabled,
-            modifier = Modifier.semantics { contentDescription = output.output.name },
+            modifier = Modifier.semantics { contentDescription = label },
         )
     }
 }
@@ -100,7 +103,16 @@ private fun SliderControl(
 @Composable
 private fun UnknownOutput(output: Output, modifier: Modifier) {
     Row(modifier = modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text(output.name, modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
+        Text(outputLabel(output), modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
         Text(stringResource(R.string.device_output_unknown), style = MaterialTheme.typography.bodyMedium)
     }
 }
+
+/**
+ * Utgångens namn, eller "Utgång 0" om namnet är tomt. Namnet kommer från nodens Info och kan bli
+ * tomt när osynliga tecken har rensats bort. Utan reservtext får kontrollen ingen rubrik, och
+ * TalkBack läser ingen beskrivning.
+ */
+@Composable
+private fun outputLabel(output: Output): String =
+    output.name.ifEmpty { stringResource(R.string.device_output_fallback, output.id.value) }

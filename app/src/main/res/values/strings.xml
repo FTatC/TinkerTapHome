@@ -4,7 +4,7 @@
     <string name="devices_title">Devices</string>
     <string name="devices_empty">No devices yet</string>
     <string name="devices_loading">Loading devices</string>
-    <string name="devices_error_storage">Couldn\'t load your devices</string>
+    <string name="devices_error_storage">Could not load your devices. Make sure the phone has free storage and restart the app.</string>
     <string name="devices_scan">Find devices</string>
     <string name="scan_title">Find devices</string>
     <string name="scan_in_progress">Searching for devices</string>
@@ -16,7 +16,7 @@
     <string name="scan_unknown_device">Unknown device</string>
     <string name="scan_rssi" translatable="false">%1$d dBm</string>
     <string name="scan_error_bluetooth_off">Bluetooth is off. Turn it on and try again.</string>
-    <string name="scan_error_permission">Bluetooth access is missing.</string>
+    <string name="scan_error_permission">Bluetooth access is missing. Allow Nearby devices for TinkerTap Home in the app settings.</string>
     <string name="scan_error_failed">The search failed (error %1$d).</string>
     <string name="save_device_title">Save device</string>
     <string name="save_device_name_label">Name</string>
@@ -28,7 +28,7 @@
         <item quantity="other">The name can be at most %1$d characters</item>
     </plurals>
     <string name="save_device_error_already_saved">This device is already saved</string>
-    <string name="save_device_error_storage">Couldn\'t save the device</string>
+    <string name="save_device_error_storage">Could not save the device. Make sure the phone has free storage and restart the app.</string>
     <string name="scan_not_supported">%1$s · Not supported</string>
     <string name="save_node_press_button">Press the pairing button on the device. The light matrix shows a blinking Bluetooth symbol. Then tap Pair within 30 seconds.</string>
     <string name="save_node_already_paired">If this phone is already paired with the device, you don\'t need to press the button.</string>
@@ -42,11 +42,11 @@
     <string name="node_error_node_too_old">The device runs firmware that is too old. Update the device.</string>
     <string name="node_error_node_too_old_version">The device runs an older protocol (version %1$d). Update the device.</string>
     <string name="node_error_app_too_old">The device needs a newer version of the app (protocol %1$d).</string>
-    <string name="node_error_state_mismatch">The outputs of the device don\'t match its description.</string>
+    <string name="node_error_state_mismatch">The outputs of the device do not match its description. Restart the device. If that does not help, flash its firmware again.</string>
     <string name="node_error_auth_failed">Wrong token. Check the token and try again.</string>
     <string name="node_error_not_authorized">The device needs a token.</string>
     <string name="node_error_invalid_output">The output no longer exists on the device.</string>
-    <string name="node_error_rejected">The device rejected the command.</string>
+    <string name="node_error_rejected">The app and the device do not understand each other. Update the app or the device firmware.</string>
     <string name="node_error_unknown_status">The device answered with an unknown error (%1$d).</string>
     <string name="permission_ble_title">Bluetooth access needed</string>
     <string name="permission_ble_rationale">TinkerTap Home finds and controls your devices over Bluetooth. Your location is never used.</string>
@@ -70,14 +70,14 @@
     <string name="device_all_off">Turn everything off</string>
     <string name="device_error_token_missing">Enter the token of the device.</string>
     <string name="device_token_save">Save token</string>
-    <string name="device_token_save_failed">Couldn\'t save the token</string>
+    <string name="device_token_save_failed">Could not save the token. Make sure the phone has free storage and restart the app.</string>
     <string name="connection_disconnected">Not connected</string>
     <string name="connection_waiting">Waiting for the device…</string>
     <string name="connection_connecting">Connecting…</string>
     <string name="connection_connected">Connected</string>
     <string name="connection_failed">Connection failed</string>
     <string name="connection_error_bluetooth_off">Bluetooth is off. Turn it on and try again.</string>
-    <string name="connection_error_permission">Bluetooth access is missing.</string>
+    <string name="connection_error_permission">Bluetooth access is missing. Allow Nearby devices for TinkerTap Home in the app settings.</string>
     <string name="connection_error_not_connected">The device is not connected.</string>
     <string name="connection_error_timeout">The device didn\'t respond in time. Make sure it\'s powered on and close by.</string>
     <string name="connection_error_lost">The connection was lost. The device may be out of range.</string>
@@ -85,9 +85,9 @@
     <string name="connection_error_bond_failed">Pairing failed or was cancelled.</string>
     <string name="connection_error_pairing_missing">The device no longer recognizes this phone. Remove the device in Android\'s Bluetooth settings and pair it again.</string>
     <string name="connection_error_no_reply">The device didn\'t answer, so the connection was closed. Try connecting again.</string>
-    <string name="connection_error_characteristic_not_found">The device doesn\'t support this function.</string>
-    <string name="connection_error_rejected">Bluetooth is busy. Try again.</string>
-    <string name="connection_error_operation_failed">The device reported an error (%1$d).</string>
+    <string name="connection_error_characteristic_not_found">The device lacks a function the app needs. If the device has new firmware, remove it in the Android Bluetooth settings and pair it again.</string>
+    <string name="connection_error_rejected">Bluetooth did not respond. Try again, and turn Bluetooth off and on if that does not help.</string>
+    <string name="connection_error_operation_failed">The device refused the operation (error %1$d). Update the app or the device firmware.</string>
     <string name="settings_title">Settings</string>
     <string name="settings_scan_section">Scanning</string>
     <string name="settings_scan_duration">Scan duration</string>
@@ -99,7 +99,7 @@
     <string name="settings_theme_system">Follow the system</string>
     <string name="settings_theme_light">Light</string>
     <string name="settings_theme_dark">Dark</string>
-    <string name="settings_save_failed">Couldn\'t save the setting</string>
+    <string name="settings_save_failed">Could not save the setting. Make sure the phone has free storage and restart the app.</string>
     <string name="scan_error_too_frequent">Android limits how often the app may search. Wait 30 seconds and try again.</string>
     <string name="scan_error_unsupported">This phone cannot search for Bluetooth LE devices.</string>
     <string name="scan_error_restart_bluetooth">The search could not start. Turn Bluetooth off and on, then try again.</string>
@@ -108,4 +108,5 @@
     <string name="connection_error_closed_by_phone">Android closed the connection. Turn Bluetooth off and on, then try again.</string>
     <string name="connection_error_establish_failed">The device could not be reached. Move closer and try again.</string>
     <string name="connection_error_gatt_error">Bluetooth on the phone reported a general error. Turn Bluetooth off and on, then try again.</string>
+    <string name="device_output_fallback">Output %1$d</string>
 </resources>

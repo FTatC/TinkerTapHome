@@ -66,6 +66,14 @@ internal class GattOperationQueue(private val onTimeout: () -> Unit) {
         pending.get()?.fail(error)
     }
 
+    /**
+     * Väntar på svaret på [operation] i högst [timeout].
+     *
+     * Avbryts den som väntar anropas [abandon], men kön släpps ändå inte direkt. Android kör
+     * operationen ändå, och ett sent svar skulle annars tas för svaret på nästa operation. Kön
+     * väntar därför ut svaret, utan att själv kunna avbrytas. Kommer inget svar inom [timeout],
+     * vare sig efter ett avbrott eller annars, anropas [onTimeout] så att anslutningen stängs.
+     */
     private suspend fun <T> awaitResponse(
         operation: PendingOperation<T>,
         timeout: Duration,

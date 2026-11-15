@@ -1,6 +1,7 @@
 package io.github.ftatc.tinkertaphome.data.ble
 
 import java.util.UUID
+import io.github.ftatc.tinkertaphome.domain.ble.ScanPower
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -12,8 +13,8 @@ internal interface BleScanSource {
     /** `true` om telefonen har Bluetooth och det är påslaget. */
     fun isBluetoothEnabled(): Boolean
 
-    /** Startar en skanning när flödet samlas in och stoppar den när insamlingen avbryts. */
-    fun scanEvents(): Flow<RawScanEvent>
+    /** Startar en skanning med [power] när flödet samlas in och stoppar den när insamlingen avbryts. */
+    fun scanEvents(power: ScanPower): Flow<RawScanEvent>
 }
 
 /** En händelse från Androids skanner, med vanliga datatyper i stället för Android-klasser. */

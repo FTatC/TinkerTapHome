@@ -3,6 +3,7 @@ package io.github.ftatc.tinkertaphome.data.ble
 import io.github.ftatc.tinkertaphome.domain.Outcome
 import io.github.ftatc.tinkertaphome.domain.ble.BlePermissionChecker
 import io.github.ftatc.tinkertaphome.domain.ble.DeviceScanner
+import io.github.ftatc.tinkertaphome.domain.ble.ScanPower
 import io.github.ftatc.tinkertaphome.domain.model.BleAddress
 import io.github.ftatc.tinkertaphome.domain.model.BleError
 import io.github.ftatc.tinkertaphome.domain.model.ScannedDevice
@@ -20,13 +21,13 @@ internal class AndroidDeviceScanner @Inject constructor(
     private val permissions: BlePermissionChecker,
 ) : DeviceScanner {
 
-    override fun scan(): Flow<ScanOutcome> = flow {
+    override fun scan(power: ScanPower): Flow<ScanOutcome> = flow {
         when {
             !permissions.isGranted() -> emit(Outcome.Failure(BleError.PermissionMissing))
             !source.isBluetoothEnabled() -> emit(Outcome.Failure(BleError.BluetoothOff))
             else -> {
                 emit(Outcome.Success(emptyList()))
-                emitAll(scanResults())
+                emitAll(scanResults(power))
             }
         }
     }
@@ -35,9 +36,9 @@ internal class AndroidDeviceScanner @Inject constructor(
      * Hela listan med unika enheter efter varje ändring, eller ett fel som avslutar skanningen.
      * Händelser som inte ändrar listan, till exempel en ogiltig adress, ger inget nytt resultat.
      */
-    private fun scanResults(): Flow<ScanOutcome> {
+    private fun scanResults(power: ScanPower): Flow<ScanOutcome> {
         val found = LinkedHashMap<BleAddress, ScannedDevice>()
-        return source.scanEvents()
+        return source.scanEvents(power)
             .mapNotNull { event ->
                 when (event) {
                     is RawScanEvent.Result -> found.withResult(event)?.let { Outcome.Success(it) }
