@@ -98,4 +98,12 @@
     <string name="settings_theme_light">Ljust</string>
     <string name="settings_theme_dark">Mörkt</string>
     <string name="settings_save_failed">Det gick inte att spara inställningen</string>
+    <string name="scan_error_too_frequent">Android begränsar hur ofta appen får söka. Vänta 30 sekunder och försök igen.</string>
+    <string name="scan_error_unsupported">Telefonen kan inte söka efter Bluetooth LE-enheter.</string>
+    <string name="scan_error_restart_bluetooth">Sökningen kunde inte starta. Slå av och på Bluetooth och försök sedan igen.</string>
+    <string name="connection_error_out_of_reach">Enheten slutade svara. Den kan vara utom räckhåll eller avstängd.</string>
+    <string name="connection_error_closed_by_device">Enheten stängde anslutningen. En annan telefon kan redan vara ansluten till den.</string>
+    <string name="connection_error_closed_by_phone">Android stängde anslutningen. Slå av och på Bluetooth och försök sedan igen.</string>
+    <string name="connection_error_establish_failed">Det gick inte att nå enheten. Gå närmare och försök igen.</string>
+    <string name="connection_error_gatt_error">Telefonens Bluetooth rapporterade ett allmänt fel. Slå av och på Bluetooth och försök sedan igen.</string>
 </resources>

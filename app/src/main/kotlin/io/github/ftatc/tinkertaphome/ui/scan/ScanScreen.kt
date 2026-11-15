@@ -112,7 +112,8 @@ private fun StatusRow(message: String, buttonLabel: Int, onClick: () -> Unit) {
 private fun errorMessage(error: BleError): String = when (error) {
     BleError.BluetoothOff -> stringResource(R.string.scan_error_bluetooth_off)
     BleError.PermissionMissing -> stringResource(R.string.scan_error_permission)
-    is BleError.ScanFailed -> stringResource(R.string.scan_error_failed, error.code)
+    is BleError.ScanFailed -> scanFailedMessage(error.code)?.let { stringResource(it) }
+        ?: stringResource(R.string.scan_error_failed, error.code)
 }
 
 @Composable

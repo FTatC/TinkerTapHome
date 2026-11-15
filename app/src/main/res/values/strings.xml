@@ -100,4 +100,12 @@
     <string name="settings_theme_light">Light</string>
     <string name="settings_theme_dark">Dark</string>
     <string name="settings_save_failed">Couldn\'t save the setting</string>
+    <string name="scan_error_too_frequent">Android limits how often the app may search. Wait 30 seconds and try again.</string>
+    <string name="scan_error_unsupported">This phone cannot search for Bluetooth LE devices.</string>
+    <string name="scan_error_restart_bluetooth">The search could not start. Turn Bluetooth off and on, then try again.</string>
+    <string name="connection_error_out_of_reach">The device stopped answering. It may be out of range or turned off.</string>
+    <string name="connection_error_closed_by_device">The device closed the connection. Another phone may already be connected to it.</string>
+    <string name="connection_error_closed_by_phone">Android closed the connection. Turn Bluetooth off and on, then try again.</string>
+    <string name="connection_error_establish_failed">The device could not be reached. Move closer and try again.</string>
+    <string name="connection_error_gatt_error">Bluetooth on the phone reported a general error. Turn Bluetooth off and on, then try again.</string>
 </resources>

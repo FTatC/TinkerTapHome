@@ -14,10 +14,13 @@ import io.github.ftatc.tinkertaphome.domain.model.SettingsError
 import io.github.ftatc.tinkertaphome.domain.model.ThemeMode
 import java.io.File
 import java.io.IOException
+import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -77,11 +80,45 @@ class DataStoreSettingsRepositoryTest {
     }
 
     @Test
+    fun `keeps following the settings after a read error`() = runTest {
+        // Tidigare tog flödet slut efter felet, så att senare ändringar aldrig nådde temat.
+        val store = FailingOnceDataStore(dataStore())
+        val repository = DataStoreSettingsRepository(store)
+
+        repository.observeSettings().test {
+            assertEquals(AppSettings(), awaitItem())
+
+            repository.update { it.copy(theme = ThemeMode.DARK) }
+
+            // Appen läser igen efter en kort paus.
+            advanceTimeBy(10.seconds)
+
+            assertEquals(AppSettings(theme = ThemeMode.DARK), expectMostRecentItem())
+        }
+    }
+
+    @Test
     fun `reports when the settings cannot be saved`() = runTest {
         assertEquals(
             Outcome.Failure(SettingsError.StorageUnavailable),
             DataStoreSettingsRepository(FailingDataStore).update { it.copy(theme = ThemeMode.DARK) },
         )
+    }
+
+    /** En DataStore som inte går att läsa första gången, men sedan fungerar som [delegate]. */
+    private class FailingOnceDataStore(private val delegate: DataStore<Preferences>) : DataStore<Preferences> {
+        private var failed = false
+
+        override val data: Flow<Preferences> = flow {
+            if (!failed) {
+                failed = true
+                throw IOException("Filen är låst")
+            }
+            emitAll(delegate.data)
+        }
+
+        override suspend fun updateData(transform: suspend (t: Preferences) -> Preferences): Preferences =
+            delegate.updateData(transform)
     }
 
     /** En DataStore vars fil inte går att läsa eller skriva. */

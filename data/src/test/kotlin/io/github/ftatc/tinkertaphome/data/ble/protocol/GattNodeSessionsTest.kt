@@ -15,6 +15,7 @@ import io.github.ftatc.tinkertaphome.domain.node.NodeOutputs
 import io.github.ftatc.tinkertaphome.domain.node.NodeSession
 import io.github.ftatc.tinkertaphome.domain.node.NodeSessionError
 import io.github.ftatc.tinkertaphome.domain.node.testNodeInfo
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.Deferred
@@ -186,6 +187,18 @@ class GattNodeSessionsTest {
         advanceTimeBy(3.seconds + 1.seconds / 2)
 
         assertEquals(listOf(NodeCommand.Authenticate(token), NodeCommand.Ping, NodeCommand.Ping, NodeCommand.Ping), sentCommands())
+    }
+
+    @Test
+    fun `never sends PING more often than the shortest interval`() = runTest {
+        // En nod med en mycket kort heartbeat får inte fylla GATT-kön med PING.
+        client.info = Outcome.Success(testNodeInfo(heartbeatTimeout = 3.milliseconds))
+        start()
+
+        advanceTimeBy(2.seconds + 1.milliseconds)
+
+        // Högst ett PING per halv sekund.
+        assertEquals(4, sentCommands().count { it == NodeCommand.Ping })
     }
 
     @Test
