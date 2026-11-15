@@ -13,6 +13,17 @@ interface DeviceScanner {
      *
      * Skickar först en tom lista, och sedan hela listan med unika enheter varje gång en enhet
      * hittas eller uppdateras. Vid fel skickas [Outcome.Failure] och flödet avslutas.
+     *
+     * [power] avgör hur ofta telefonen lyssnar efter enheter, och därmed hur mycket ström skanningen drar.
      */
-    fun scan(): Flow<Outcome<List<ScannedDevice>, BleError>>
+    fun scan(power: ScanPower = ScanPower.HIGH): Flow<Outcome<List<ScannedDevice>, BleError>>
+}
+
+/** Hur intensivt skanningen lyssnar efter enheter. */
+enum class ScanPower {
+    /** Lyssnar hela tiden. Hittar enheter snabbast men drar mest ström. Passar korta skanningar. */
+    HIGH,
+
+    /** Lyssnar en del av tiden. Hittar enheter något långsammare men drar mindre ström. */
+    BALANCED,
 }

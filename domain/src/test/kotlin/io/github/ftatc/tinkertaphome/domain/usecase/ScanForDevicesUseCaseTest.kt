@@ -13,6 +13,7 @@ import io.github.ftatc.tinkertaphome.domain.model.testScannedDevice
 import io.github.ftatc.tinkertaphome.domain.repository.FakeDeviceRepository
 import io.github.ftatc.tinkertaphome.domain.repository.FakeSettingsRepository
 import io.github.ftatc.tinkertaphome.domain.ble.FakeDeviceScanner
+import io.github.ftatc.tinkertaphome.domain.ble.ScanPower
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceTimeBy
@@ -147,6 +148,29 @@ class ScanForDevicesUseCaseTest {
 
             advanceTimeBy(2.seconds)
             awaitComplete()
+        }
+    }
+
+    @Test
+    fun `scans with full power by default`() = runTest {
+        scanner.emit(Outcome.Success(emptyList()))
+
+        scanForDevices().test {
+            awaitItem()
+            assertEquals(ScanPower.HIGH, scanner.lastPower)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `the longest scan uses less power`() = runTest {
+        settings.settings.value = AppSettings(scanDuration = ScanDuration.LONG)
+        scanner.emit(Outcome.Success(emptyList()))
+
+        scanForDevices().test {
+            awaitItem()
+            assertEquals(ScanPower.BALANCED, scanner.lastPower)
+            cancelAndIgnoreRemainingEvents()
         }
     }
 

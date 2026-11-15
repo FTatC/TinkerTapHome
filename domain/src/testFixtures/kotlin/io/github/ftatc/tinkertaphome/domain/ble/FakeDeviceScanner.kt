@@ -25,10 +25,16 @@ class FakeDeviceScanner : DeviceScanner {
     var startCount: Int = 0
         private set
 
+    /** Läget för den senaste skanningen. */
+    @Volatile
+    var lastPower: ScanPower? = null
+        private set
+
     suspend fun emit(outcome: Outcome<List<ScannedDevice>, BleError>) = results.emit(outcome)
 
-    override fun scan(): Flow<Outcome<List<ScannedDevice>, BleError>> = results
+    override fun scan(power: ScanPower): Flow<Outcome<List<ScannedDevice>, BleError>> = results
         .onStart {
+            lastPower = power
             startCount++
             isScanning = true
         }

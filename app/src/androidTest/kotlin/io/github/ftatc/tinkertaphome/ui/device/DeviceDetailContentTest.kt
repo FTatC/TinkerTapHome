@@ -15,6 +15,7 @@ import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.ftatc.tinkertaphome.R
+import io.github.ftatc.tinkertaphome.domain.model.CharacteristicId
 import io.github.ftatc.tinkertaphome.domain.model.ConnectionError
 import io.github.ftatc.tinkertaphome.domain.model.ConnectionState
 import io.github.ftatc.tinkertaphome.domain.model.DeviceError
@@ -30,6 +31,7 @@ import io.github.ftatc.tinkertaphome.domain.node.OutputType
 import io.github.ftatc.tinkertaphome.domain.node.testNodeInfo
 import io.github.ftatc.tinkertaphome.domain.usecase.RepairNodeError
 import io.github.ftatc.tinkertaphome.ui.theme.TinkerTapTheme
+import java.util.UUID
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -177,6 +179,30 @@ class DeviceDetailContentTest {
         composeRule.onNodeWithText(string(R.string.device_output_degrees, 90)).assertIsDisplayed()
         composeRule.onNodeWithText(string(R.string.device_output_unknown)).performScrollTo().assertIsDisplayed()
         composeRule.onNodeWithText(string(R.string.device_last_known)).assertDoesNotExist()
+    }
+
+    @Test
+    fun anOutputWithoutANameGetsAFallbackLabel() {
+        val unnamed = Output(OutputId(0), "", OutputType.Digital)
+        showSession(NodeSession.Open(NodeOutputs(testNodeInfo(outputs = listOf(unnamed)), listOf(0))))
+
+        composeRule.onNodeWithText(string(R.string.device_output_fallback, 0)).assertIsDisplayed()
+        composeRule.onNodeWithContentDescription(string(R.string.device_output_fallback, 0)).assertIsDisplayed()
+    }
+
+    @Test
+    fun aValueOutsideTheRangeIsShownAsTheLimit() {
+        showSession(NodeSession.Open(NodeOutputs(testNodeInfo(outputs = listOf(servo)), listOf(200))))
+
+        composeRule.onNodeWithText(string(R.string.device_output_degrees, 180)).assertIsDisplayed()
+    }
+
+    @Test
+    fun aMissingCharacteristicOffersToPairAgain() {
+        showDevice(ConnectionState.Failed(ConnectionError.CharacteristicNotFound(CharacteristicId(UUID(0, 1), UUID(0, 2)))))
+
+        composeRule.onNodeWithText(string(R.string.connection_error_characteristic_not_found)).assertIsDisplayed()
+        composeRule.onNodeWithText(string(R.string.device_repair)).assertIsDisplayed()
     }
 
     @Test

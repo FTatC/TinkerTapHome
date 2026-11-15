@@ -3,7 +3,7 @@
     <string name="devices_title">Enheter</string>
     <string name="devices_empty">Inga enheter än</string>
     <string name="devices_loading">Laddar enheter</string>
-    <string name="devices_error_storage">Det gick inte att läsa in enheterna</string>
+    <string name="devices_error_storage">Det gick inte att läsa in enheterna. Kontrollera att telefonen har ledigt lagringsutrymme och starta om appen.</string>
     <string name="devices_scan">Sök enheter</string>
     <string name="scan_title">Sök enheter</string>
     <string name="scan_in_progress">Söker efter enheter</string>
@@ -14,7 +14,7 @@
     <string name="scan_retry">Försök igen</string>
     <string name="scan_unknown_device">Okänd enhet</string>
     <string name="scan_error_bluetooth_off">Bluetooth är avstängt. Slå på det och försök igen.</string>
-    <string name="scan_error_permission">Bluetooth-åtkomst saknas.</string>
+    <string name="scan_error_permission">Bluetooth-åtkomst saknas. Tillåt Enheter i närheten för TinkerTap Home i appens inställningar.</string>
     <string name="scan_error_failed">Sökningen misslyckades (fel %1$d).</string>
     <string name="save_device_title">Spara enhet</string>
     <string name="save_device_name_label">Namn</string>
@@ -26,7 +26,7 @@
         <item quantity="other">Namnet får vara högst %1$d tecken</item>
     </plurals>
     <string name="save_device_error_already_saved">Enheten är redan sparad</string>
-    <string name="save_device_error_storage">Det gick inte att spara enheten</string>
+    <string name="save_device_error_storage">Det gick inte att spara enheten. Kontrollera att telefonen har ledigt lagringsutrymme och starta om appen.</string>
     <string name="scan_not_supported">%1$s · Stöds inte</string>
     <string name="save_node_press_button">Tryck på parkopplingsknappen på enheten. Lampmatrisen visar en blinkande Bluetooth-symbol. Tryck sedan på Parkoppla inom 30 sekunder.</string>
     <string name="save_node_already_paired">Är telefonen redan parkopplad med enheten behöver du inte trycka på knappen.</string>
@@ -40,11 +40,11 @@
     <string name="node_error_node_too_old">Enheten kör en för gammal firmware. Uppdatera enheten.</string>
     <string name="node_error_node_too_old_version">Enheten kör ett äldre protokoll (version %1$d). Uppdatera enheten.</string>
     <string name="node_error_app_too_old">Enheten kräver en nyare version av appen (protokoll %1$d).</string>
-    <string name="node_error_state_mismatch">Enhetens utgångar stämmer inte med dess beskrivning.</string>
+    <string name="node_error_state_mismatch">Enhetens utgångar stämmer inte med dess beskrivning. Starta om enheten. Hjälper det inte, flasha om dess firmware.</string>
     <string name="node_error_auth_failed">Fel token. Kontrollera tokenet och försök igen.</string>
     <string name="node_error_not_authorized">Enheten kräver ett token.</string>
     <string name="node_error_invalid_output">Utgången finns inte längre på enheten.</string>
-    <string name="node_error_rejected">Enheten avvisade kommandot.</string>
+    <string name="node_error_rejected">Appen och enheten förstår inte varandra. Uppdatera appen eller enhetens firmware.</string>
     <string name="node_error_unknown_status">Enheten svarade med ett okänt fel (%1$d).</string>
     <string name="permission_ble_title">Appen behöver Bluetooth-åtkomst</string>
     <string name="permission_ble_rationale">TinkerTap Home hittar och styr dina enheter via Bluetooth. Din plats används aldrig.</string>
@@ -68,14 +68,14 @@
     <string name="device_all_off">Släck allt</string>
     <string name="device_error_token_missing">Ange enhetens token.</string>
     <string name="device_token_save">Spara token</string>
-    <string name="device_token_save_failed">Det gick inte att spara tokenet</string>
+    <string name="device_token_save_failed">Det gick inte att spara tokenet. Kontrollera att telefonen har ledigt lagringsutrymme och starta om appen.</string>
     <string name="connection_disconnected">Inte ansluten</string>
     <string name="connection_waiting">Väntar på enheten…</string>
     <string name="connection_connecting">Ansluter…</string>
     <string name="connection_connected">Ansluten</string>
     <string name="connection_failed">Anslutningen misslyckades</string>
     <string name="connection_error_bluetooth_off">Bluetooth är avstängt. Slå på det och försök igen.</string>
-    <string name="connection_error_permission">Bluetooth-åtkomst saknas.</string>
+    <string name="connection_error_permission">Bluetooth-åtkomst saknas. Tillåt Enheter i närheten för TinkerTap Home i appens inställningar.</string>
     <string name="connection_error_not_connected">Enheten är inte ansluten.</string>
     <string name="connection_error_timeout">Enheten svarade inte i tid. Kontrollera att den är påslagen och i närheten.</string>
     <string name="connection_error_lost">Anslutningen bröts. Enheten kan vara utom räckhåll.</string>
@@ -83,9 +83,9 @@
     <string name="connection_error_bond_failed">Parkopplingen misslyckades eller avbröts.</string>
     <string name="connection_error_pairing_missing">Enheten känner inte längre igen telefonen. Ta bort enheten i Androids Bluetooth-inställningar och parkoppla den igen.</string>
     <string name="connection_error_no_reply">Enheten svarade inte, så anslutningen stängdes. Försök ansluta igen.</string>
-    <string name="connection_error_characteristic_not_found">Enheten stöder inte den här funktionen.</string>
-    <string name="connection_error_rejected">Bluetooth är upptaget. Försök igen.</string>
-    <string name="connection_error_operation_failed">Enheten rapporterade ett fel (%1$d).</string>
+    <string name="connection_error_characteristic_not_found">Enheten saknar en funktion som appen behöver. Har enheten fått ny firmware, ta bort den i Androids Bluetooth-inställningar och parkoppla den igen.</string>
+    <string name="connection_error_rejected">Bluetooth svarade inte. Försök igen, och slå av och på Bluetooth om det inte hjälper.</string>
+    <string name="connection_error_operation_failed">Enheten vägrade utföra åtgärden (fel %1$d). Uppdatera appen eller enhetens firmware.</string>
     <string name="settings_title">Inställningar</string>
     <string name="settings_scan_section">Skanning</string>
     <string name="settings_scan_duration">Skanningens längd</string>
@@ -97,7 +97,7 @@
     <string name="settings_theme_system">Följ systemet</string>
     <string name="settings_theme_light">Ljust</string>
     <string name="settings_theme_dark">Mörkt</string>
-    <string name="settings_save_failed">Det gick inte att spara inställningen</string>
+    <string name="settings_save_failed">Det gick inte att spara inställningen. Kontrollera att telefonen har ledigt lagringsutrymme och starta om appen.</string>
     <string name="scan_error_too_frequent">Android begränsar hur ofta appen får söka. Vänta 30 sekunder och försök igen.</string>
     <string name="scan_error_unsupported">Telefonen kan inte söka efter Bluetooth LE-enheter.</string>
     <string name="scan_error_restart_bluetooth">Sökningen kunde inte starta. Slå av och på Bluetooth och försök sedan igen.</string>
@@ -106,4 +106,5 @@
     <string name="connection_error_closed_by_phone">Android stängde anslutningen. Slå av och på Bluetooth och försök sedan igen.</string>
     <string name="connection_error_establish_failed">Det gick inte att nå enheten. Gå närmare och försök igen.</string>
     <string name="connection_error_gatt_error">Telefonens Bluetooth rapporterade ett allmänt fel. Slå av och på Bluetooth och försök sedan igen.</string>
+    <string name="device_output_fallback">Utgång %1$d</string>
 </resources>

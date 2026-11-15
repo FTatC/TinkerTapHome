@@ -44,7 +44,13 @@ internal class AndroidGattConnector @Inject constructor(
         // Med NOT_EXPORTED kommer det aldrig fram (verifierat på enhet). Det är säkert, eftersom
         // ACTION_BOND_STATE_CHANGED är ett skyddat systemmeddelande som andra appar inte kan skicka.
         context.registerReceiver(bondReceiver, IntentFilter(BluetoothDevice.ACTION_BOND_STATE_CHANGED), Context.RECEIVER_EXPORTED)
-        val started = startGatt(enabledAdapter, address, autoConnect, onEvent)
+        val started = try {
+            startGatt(enabledAdapter, address, autoConnect, onEvent)
+        } catch (e: RuntimeException) {
+            // Ett oväntat fel får inte lämna mottagaren registrerad, eftersom ingen handle stänger den då.
+            context.unregisterReceiver(bondReceiver)
+            throw e
+        }
         return when (started) {
             is GattStart.Connected -> GattConnectStart.Started(AndroidGattHandle(context, started.gatt, bondReceiver))
             is GattStart.Refused -> started.reason.also { context.unregisterReceiver(bondReceiver) }

@@ -11,6 +11,10 @@ import io.github.ftatc.tinkertaphome.domain.node.NodeSessionError
 import io.github.ftatc.tinkertaphome.domain.node.OutputValue
 import io.github.ftatc.tinkertaphome.domain.usecase.RepairNodeError
 
+/** `true` för fel som en ny parkoppling löser. */
+private fun ConnectionError?.needsNewPairing(): Boolean =
+    this == ConnectionError.PairingMissing || this is ConnectionError.CharacteristicNotFound
+
 /** UI-tillståndet för detaljskärmen för en sparad enhet. */
 sealed interface DeviceDetailUiState {
 
@@ -59,10 +63,15 @@ sealed interface DeviceDetailUiState {
         val canRetry: Boolean
             get() = (connection is ConnectionState.Failed || session is NodeSession.Failed) && !canRepair
 
-        /** Noden har glömt telefonen eller parkopplingen har tagits bort, så noden kan parkopplas igen. */
+        /**
+         * Noden kan parkopplas igen: den har glömt telefonen, parkopplingen har tagits bort, eller en
+         * characteristic saknas. Det sista beror nästan alltid på att Android har sparat nodens gamla
+         * tjänster efter en firmwareuppdatering, och en ny parkoppling hämtar dem på nytt (se
+         * `docs/ble-protocol.md`, Fel vid anslutning).
+         */
         val canRepair: Boolean
-            get() = error == ConnectionError.PairingMissing ||
-                sessionError == NodeSessionError.Node(NodeFailure.Connection(ConnectionError.PairingMissing))
+            get() = error.needsNewPairing() ||
+                ((sessionError as? NodeSessionError.Node)?.failure as? NodeFailure.Connection)?.error.needsNewPairing()
 
         /**
          * Formuläret för att parkoppla igen syns medan parkopplingen pågår, även när felet har

@@ -4,6 +4,7 @@ import app.cash.turbine.ReceiveTurbine
 import app.cash.turbine.test
 import io.github.ftatc.tinkertaphome.data.ble.protocol.NodeProtocol
 import io.github.ftatc.tinkertaphome.domain.Outcome
+import io.github.ftatc.tinkertaphome.domain.ble.ScanPower
 import io.github.ftatc.tinkertaphome.domain.model.BleError
 import io.github.ftatc.tinkertaphome.domain.model.ScannedDevice
 import io.github.ftatc.tinkertaphome.domain.model.testAddress
@@ -26,6 +27,15 @@ class AndroidDeviceScannerTest {
     private val source = FakeBleScanSource()
     private val permissions = FakeBlePermissionChecker(granted = true)
     private val scanner = AndroidDeviceScanner(source, permissions)
+
+    @Test
+    fun `starts the scan with the requested power`() = runTest {
+        scanner.scan(ScanPower.BALANCED).test {
+            awaitItem()
+            assertEquals(ScanPower.BALANCED, source.power)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
 
     @Test
     fun `fails without starting a scan when permissions are missing`() = runTest {
@@ -295,7 +305,12 @@ class AndroidDeviceScannerTest {
 
         override fun isBluetoothEnabled(): Boolean = bluetoothEnabled
 
-        override fun scanEvents(): Flow<RawScanEvent> {
+        /** Läget som den senaste skanningen startades med. */
+        var power: ScanPower? = null
+            private set
+
+        override fun scanEvents(power: ScanPower): Flow<RawScanEvent> {
+            this.power = power
             events = Channel(Channel.UNLIMITED)
             return events.receiveAsFlow()
                 .onStart { wasStarted = true; isScanning = true }

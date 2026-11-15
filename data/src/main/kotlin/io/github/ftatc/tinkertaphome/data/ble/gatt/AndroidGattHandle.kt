@@ -4,7 +4,6 @@ import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothGattDescriptor
-import android.bluetooth.BluetoothStatusCodes
 import android.content.BroadcastReceiver
 import android.content.Context
 import io.github.ftatc.tinkertaphome.domain.model.CharacteristicId
@@ -26,7 +25,7 @@ internal class AndroidGattHandle(
     // Varje Android-anrop har sin egen try/catch, så att lint kan se att SecurityException hanteras.
 
     override fun discoverServices(): GattRequest {
-        if (closed) return GattRequest.REJECTED
+        if (closed) return GattRequest.NOT_CONNECTED
         return try {
             gatt.discoverServices().toRequest()
         } catch (_: SecurityException) {
@@ -41,7 +40,7 @@ internal class AndroidGattHandle(
     }
 
     override fun createBond(): GattRequest {
-        if (closed) return GattRequest.REJECTED
+        if (closed) return GattRequest.NOT_CONNECTED
         return try {
             gatt.device.createBond().toRequest()
         } catch (_: SecurityException) {
@@ -50,7 +49,7 @@ internal class AndroidGattHandle(
     }
 
     override fun requestMtu(mtu: Int): GattRequest {
-        if (closed) return GattRequest.REJECTED
+        if (closed) return GattRequest.NOT_CONNECTED
         return try {
             gatt.requestMtu(mtu).toRequest()
         } catch (_: SecurityException) {
@@ -103,7 +102,7 @@ internal class AndroidGattHandle(
         id: CharacteristicId,
         block: (BluetoothGattCharacteristic) -> GattRequest,
     ): GattRequest {
-        if (closed) return GattRequest.REJECTED
+        if (closed) return GattRequest.NOT_CONNECTED
         val found = gatt.getService(id.service)?.getCharacteristic(id.characteristic) ?: return GattRequest.NOT_FOUND
         return block(found)
     }
@@ -117,9 +116,6 @@ internal class AndroidGattHandle(
 /** För Android-anrop som svarar `true` när operationen har startats. */
 private fun Boolean.toRequest(): GattRequest = if (this) GattRequest.STARTED else GattRequest.REJECTED
 
-/** För Android-anrop som svarar med en `BluetoothStatusCodes`-kod. */
-private fun Int.statusToRequest(): GattRequest =
-    if (this == BluetoothStatusCodes.SUCCESS) GattRequest.STARTED else GattRequest.REJECTED
 
 /** Indikeringar används om characteristicen bara stöder dem, annars notifieringar. */
 private fun cccdValue(characteristic: BluetoothGattCharacteristic, enabled: Boolean): ByteArray {

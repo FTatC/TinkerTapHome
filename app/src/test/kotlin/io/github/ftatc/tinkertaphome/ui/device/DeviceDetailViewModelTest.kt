@@ -3,6 +3,7 @@ package io.github.ftatc.tinkertaphome.ui.device
 import app.cash.turbine.test
 import io.github.ftatc.tinkertaphome.domain.Outcome
 import io.github.ftatc.tinkertaphome.domain.ble.FakeDeviceConnection
+import io.github.ftatc.tinkertaphome.domain.model.CharacteristicId
 import io.github.ftatc.tinkertaphome.domain.model.ConnectionError
 import io.github.ftatc.tinkertaphome.domain.model.ConnectionState
 import io.github.ftatc.tinkertaphome.domain.model.DeviceError
@@ -28,6 +29,7 @@ import io.github.ftatc.tinkertaphome.domain.usecase.SetOutputUseCase
 import io.github.ftatc.tinkertaphome.domain.usecase.UpdateAuthTokenUseCase
 import io.github.ftatc.tinkertaphome.ui.MainDispatcherRule
 import io.github.ftatc.tinkertaphome.ui.navigation.DeviceDetailRoute
+import java.util.UUID
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -351,6 +353,20 @@ class DeviceDetailViewModelTest {
         viewModel().uiState.test {
             assertTrue((awaitItem() as DeviceDetailUiState.Content).canRepair)
         }
+    }
+
+    @Test
+    fun `offers to pair again when a characteristic is missing after a firmware update`() {
+        val missing = ConnectionError.CharacteristicNotFound(CharacteristicId(UUID(0, 1), UUID(0, 2)))
+        val fromConnection = DeviceDetailUiState.Content(lampa, ConnectionState.Failed(missing))
+        val fromSession = DeviceDetailUiState.Content(
+            lampa,
+            ConnectionState.Disconnected,
+            session = NodeSession.Failed(NodeSessionError.Node(NodeFailure.Connection(missing))),
+        )
+
+        assertTrue(fromConnection.canRepair)
+        assertTrue(fromSession.canRepair)
     }
 
     @Test
