@@ -8,6 +8,8 @@ import io.github.ftatc.tinkertaphome.domain.node.CommandError
 import io.github.ftatc.tinkertaphome.domain.node.NodeFailure
 import io.github.ftatc.tinkertaphome.domain.node.NodeSession
 import io.github.ftatc.tinkertaphome.domain.node.NodeSessionError
+import io.github.ftatc.tinkertaphome.domain.node.Output
+import io.github.ftatc.tinkertaphome.domain.node.OutputType
 import io.github.ftatc.tinkertaphome.domain.node.OutputValue
 import io.github.ftatc.tinkertaphome.domain.usecase.RepairNodeError
 
@@ -34,6 +36,8 @@ sealed interface DeviceDetailUiState {
      * @property tokenSaveFailed `true` om det nya tokenet inte gick att spara.
      * @property isRepairing `true` medan appen parkopplar noden igen.
      * @property repairError Felet från det senaste försöket att parkoppla igen, eller `null`.
+     * @property pushButtons Namnen på de digitala utgångar som användaren vill se som tryckknappar.
+     * @property pushButtonError `true` om valet av tryckknappar inte gick att läsa eller spara.
      */
     data class Content(
         val device: Device,
@@ -46,7 +50,15 @@ sealed interface DeviceDetailUiState {
         val tokenSaveFailed: Boolean = false,
         val isRepairing: Boolean = false,
         val repairError: RepairNodeError? = null,
+        val pushButtons: Set<String> = emptySet(),
+        val pushButtonError: Boolean = false,
     ) : DeviceDetailUiState {
+
+        /**
+         * `true` om [output] visas som tryckknapp, som skickar en puls, i stället för som switch.
+         * Bara digitala utgångar kan vara tryckknappar.
+         */
+        fun isPushButton(output: Output): Boolean = output.type == OutputType.Digital && output.name in pushButtons
 
         /** Felet som stoppade den senaste anslutningen, om den misslyckades. */
         val error: ConnectionError?

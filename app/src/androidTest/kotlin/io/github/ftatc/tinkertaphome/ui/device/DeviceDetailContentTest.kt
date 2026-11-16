@@ -50,6 +50,8 @@ class DeviceDetailContentTest {
     private var repairClicks = 0
     private val outputChanges = mutableListOf<Pair<Output, Int>>()
     private val typedTokens = mutableListOf<String>()
+    private val pulses = mutableListOf<Output>()
+    private val pushButtonChanges = mutableListOf<Pair<Output, Boolean>>()
 
     private val led = Output(OutputId(0), "led", OutputType.Digital)
     private val fan = Output(OutputId(1), "fan", OutputType.Pwm)
@@ -72,6 +74,8 @@ class DeviceDetailContentTest {
                         onTokenChange = { typedTokens += it },
                         onTokenSubmit = { tokenSubmits++ },
                         onRepairClick = { repairClicks++ },
+                        onPulse = { pulses += it },
+                        onPushButtonChange = { output, pushButton -> pushButtonChanges += output to pushButton },
                     ),
                 )
             }
@@ -173,7 +177,7 @@ class DeviceDetailContentTest {
     fun showsTheOutputsWithTheirValues() {
         showSession(NodeSession.Open(outputs))
 
-        composeRule.onNodeWithText(string(R.string.device_firmware, "0.4.0")).assertIsDisplayed()
+        composeRule.onNodeWithText(string(R.string.device_firmware, "0.5.0")).assertIsDisplayed()
         composeRule.onNodeWithContentDescription("led").assertIsOn()
         composeRule.onNodeWithText(string(R.string.device_output_percent, 50)).assertIsDisplayed()
         composeRule.onNodeWithText(string(R.string.device_output_degrees, 90)).assertIsDisplayed()
@@ -358,5 +362,74 @@ class DeviceDetailContentTest {
         )
 
         composeRule.onNodeWithText(string(R.string.save_node_error_bond_failed)).assertIsDisplayed()
+    }
+
+    private fun showPushButton(session: NodeSession, pushButtonError: Boolean = false) = show(
+        DeviceDetailUiState.Content(
+            lampa,
+            ConnectionState.Connected,
+            session = session,
+            pushButtons = setOf("led"),
+            pushButtonError = pushButtonError,
+        ),
+    )
+
+    @Test
+    fun aPushButtonSendsAPulse() {
+        showPushButton(NodeSession.Open(NodeOutputs(testNodeInfo(outputs = listOf(led)), listOf(0))))
+
+        composeRule.onNodeWithText(string(R.string.device_output_press)).performClick()
+
+        assertEquals(listOf(led), pulses)
+        assertEquals(emptyList<Pair<Output, Int>>(), outputChanges)
+    }
+
+    @Test
+    fun aPushButtonShowsThatThePulseIsOn() {
+        showPushButton(NodeSession.Open(NodeOutputs(testNodeInfo(outputs = listOf(led)), listOf(1))))
+
+        composeRule.onNodeWithText(string(R.string.device_output_on)).assertIsDisplayed()
+    }
+
+    @Test
+    fun aPushButtonWaitsUntilTheNodeIsConnected() {
+        showPushButton(NodeSession.Closed(NodeOutputs(testNodeInfo(outputs = listOf(led)), listOf(0))))
+
+        composeRule.onNodeWithContentDescription("led").assertIsNotEnabled()
+    }
+
+    @Test
+    fun theMenuMakesASwitchAPushButtonEvenWhenTheNodeIsNotConnected() {
+        showSession(NodeSession.Closed(NodeOutputs(testNodeInfo(outputs = listOf(led)), listOf(0))), ConnectionState.Waiting)
+
+        composeRule.onNodeWithContentDescription(string(R.string.device_output_options, "led")).performClick()
+        composeRule.onNodeWithText(string(R.string.device_output_show_as_push_button)).performClick()
+
+        assertEquals(listOf(led to true), pushButtonChanges)
+    }
+
+    @Test
+    fun theMenuMakesAPushButtonASwitchAgain() {
+        showPushButton(NodeSession.Open(NodeOutputs(testNodeInfo(outputs = listOf(led)), listOf(0))))
+
+        composeRule.onNodeWithContentDescription(string(R.string.device_output_options, "led")).performClick()
+        composeRule.onNodeWithText(string(R.string.device_output_show_as_switch)).performClick()
+
+        assertEquals(listOf(led to false), pushButtonChanges)
+    }
+
+    @Test
+    fun onlyDigitalOutputsHaveAMenu() {
+        showSession(NodeSession.Open(outputs))
+
+        composeRule.onNodeWithContentDescription(string(R.string.device_output_options, "led")).assertIsDisplayed()
+        composeRule.onNodeWithContentDescription(string(R.string.device_output_options, "fan")).assertDoesNotExist()
+    }
+
+    @Test
+    fun aPushButtonChoiceThatCannotBeSavedIsShown() {
+        showPushButton(NodeSession.Open(NodeOutputs(testNodeInfo(outputs = listOf(led)), listOf(0))), pushButtonError = true)
+
+        composeRule.onNodeWithText(string(R.string.device_push_button_error)).performScrollTo().assertIsDisplayed()
     }
 }

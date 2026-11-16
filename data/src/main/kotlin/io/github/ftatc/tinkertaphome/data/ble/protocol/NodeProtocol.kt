@@ -11,7 +11,7 @@ import java.util.UUID
 internal object NodeProtocol {
 
     /** Den enda protokollversion appen stöder (fråga 4 i `docs/open-questions.md`). */
-    const val VERSION = 3
+    const val VERSION = 4
 
     val SERVICE: UUID = nodeUuid(0x0000)
     val COMMAND = CharacteristicId(SERVICE, nodeUuid(0x0001))
@@ -31,6 +31,7 @@ internal object Opcode {
     const val TOGGLE = 0x02
     const val PWM = 0x03
     const val SERVO = 0x04
+    const val PULSE = 0x05
     const val GET_STATE = 0x10
     const val PING = 0x11
     const val AUTH = 0x20

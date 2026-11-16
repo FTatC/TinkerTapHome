@@ -63,7 +63,7 @@ private fun decodeInfo(element: JsonElement): Outcome<NodeInfo, NodeError> =
 
 private const val PROTO_FIELD = "proto"
 
-/** Info som den skickas av noden. Alla fält krävs i protokollversion 3. */
+/** Info som den skickas av noden. Alla fält krävs i protokollversion 4. */
 @Serializable
 private data class InfoJson(
     @SerialName("fw") val firmware: String,

@@ -7,6 +7,7 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import io.github.ftatc.tinkertaphome.data.local.DeviceDao
+import io.github.ftatc.tinkertaphome.data.local.PushButtonDao
 import io.github.ftatc.tinkertaphome.data.local.TinkerTapDatabase
 import javax.inject.Singleton
 
@@ -21,4 +22,7 @@ internal object DatabaseModule {
 
     @Provides
     fun provideDeviceDao(database: TinkerTapDatabase): DeviceDao = database.deviceDao()
+
+    @Provides
+    fun providePushButtonDao(database: TinkerTapDatabase): PushButtonDao = database.pushButtonDao()
 }

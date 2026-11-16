@@ -63,6 +63,8 @@ fun DeviceDetailScreen(viewModel: DeviceDetailViewModel) {
             onTokenChange = viewModel::onTokenChange,
             onTokenSubmit = viewModel::onTokenSubmit,
             onRepairClick = viewModel::onRepairClick,
+            onPulse = viewModel::onPulse,
+            onPushButtonChange = viewModel::onPushButtonChange,
         ),
     )
 }
@@ -75,6 +77,8 @@ data class DeviceDetailActions(
     val onTokenChange: (String) -> Unit = {},
     val onTokenSubmit: () -> Unit = {},
     val onRepairClick: () -> Unit = {},
+    val onPulse: (Output) -> Unit = {},
+    val onPushButtonChange: (Output, Boolean) -> Unit = { _, _ -> },
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -184,9 +188,17 @@ private fun Outputs(uiState: DeviceDetailUiState.Content, actions: DeviceDetailA
     if (uiState.outputs.isEmpty()) return
     HorizontalDivider()
     if (uiState.showsLastKnownValues) Text(stringResource(R.string.device_last_known), style = MaterialTheme.typography.bodyMedium)
+    val pushButtonActions = PushButtonActions(actions.onPulse, actions.onPushButtonChange)
     uiState.outputs.forEach { output ->
-        OutputControl(output = output, enabled = uiState.canControl, onOutputChange = actions.onOutputChange)
+        OutputControl(
+            output = output,
+            enabled = uiState.canControl,
+            onOutputChange = actions.onOutputChange,
+            isPushButton = uiState.isPushButton(output.output),
+            pushButtonActions = pushButtonActions,
+        )
     }
+    if (uiState.pushButtonError) ErrorText(stringResource(R.string.device_push_button_error))
     uiState.commandError?.let { ErrorText(nodeFailureMessage(it)) }
     OutlinedButton(onClick = actions.onAllOffClick, enabled = uiState.canControl) {
         Text(stringResource(R.string.device_all_off))
@@ -228,8 +240,8 @@ private fun CenteredText(text: String, modifier: Modifier) {
 @Composable
 private fun DeviceDetailContentPreview() {
     val info = NodeInfo(
-        firmwareVersion = "0.4.0",
-        protocolVersion = 3,
+        firmwareVersion = "0.5.0",
+        protocolVersion = 4,
         name = "TinkerTapNode-A1B2",
         pairingRequired = true,
         authRequired = true,

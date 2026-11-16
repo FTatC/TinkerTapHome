@@ -70,7 +70,7 @@ private fun List<DeviceEntity>.toDevicesOutcome(): Outcome<List<Device>, DeviceE
  * att appen kraschar. Alla [Exception] räknas som lagringsfel eftersom Room kastar flera olika typer,
  * till exempel `SQLiteException` och `IllegalStateException`. Avbrott och [Error] kastas vidare.
  */
-private fun Throwable.toStorageFailureOrRethrow(): Outcome.Failure<DeviceError> = when (this) {
+internal fun Throwable.toStorageFailureOrRethrow(): Outcome.Failure<DeviceError> = when (this) {
     is CancellationException -> throw this
     is Exception -> Outcome.Failure(DeviceError.StorageUnavailable)
     else -> throw this

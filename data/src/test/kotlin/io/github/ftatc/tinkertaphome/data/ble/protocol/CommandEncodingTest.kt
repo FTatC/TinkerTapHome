@@ -46,6 +46,11 @@ class CommandEncodingTest {
     }
 
     @Test
+    fun `encodes PULSE for the btn output`() {
+        assertEncodes("05 01", NodeCommand.Pulse(OutputId(1)))
+    }
+
+    @Test
     fun `encodes commands without an output as a single opcode byte`() {
         assertEncodes("11", NodeCommand.Ping)
         assertEncodes("10", NodeCommand.GetState)
@@ -62,6 +67,8 @@ class CommandEncodingTest {
     @Test
     fun `reports the output a command targets`() {
         assertEquals(OutputId(3), NodeCommand.Toggle(OutputId(3)).targetOutput)
+        assertEquals(OutputId(1), NodeCommand.Pulse(OutputId(1)).targetOutput)
+        assertEquals(Opcode.PULSE, NodeCommand.Pulse(OutputId(1)).opcode)
         assertNull(NodeCommand.AllOff.targetOutput)
     }
 

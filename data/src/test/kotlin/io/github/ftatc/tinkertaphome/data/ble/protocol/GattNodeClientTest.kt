@@ -36,9 +36,9 @@ class GattNodeClientTest {
 
     @Test
     fun `reports a node with another protocol`() = runTest {
-        connection.readResults[NodeProtocol.INFO] = Outcome.Success(SPEC_INFO.replace("\"proto\":3", "\"proto\":2").encodeToByteArray())
+        connection.readResults[NodeProtocol.INFO] = Outcome.Success(SPEC_INFO.replace("\"proto\":4", "\"proto\":3").encodeToByteArray())
 
-        assertEquals(Outcome.Failure(NodeFailure.Node(NodeError.NodeTooOld(2))), client.readInfo(address))
+        assertEquals(Outcome.Failure(NodeFailure.Node(NodeError.NodeTooOld(3))), client.readInfo(address))
     }
 
     @Test
@@ -136,6 +136,6 @@ class GattNodeClientTest {
 
     private companion object {
         const val SPEC_INFO =
-            """{"fw":"0.4.0","proto":3,"name":"TinkerTapNode-A1B2","pair":1,"auth":1,"ato":10000,"hb":0,"dev":[{"id":0,"n":"led","t":"D"}]}"""
+            """{"fw":"0.5.0","proto":4,"name":"TinkerTapNode-A1B2","pair":1,"auth":1,"ato":10000,"hb":0,"dev":[{"id":0,"n":"led","t":"D"}]}"""
     }
 }

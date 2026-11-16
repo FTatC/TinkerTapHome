@@ -13,6 +13,12 @@ sealed interface NodeCommand {
     /** Växlar en digital utgång mellan av och på. */
     data class Toggle(val output: OutputId) : NodeCommand
 
+    /**
+     * Slår på en digital utgång en kort stund och sedan av igen, som en tryckknapp. Noden svarar när
+     * pulsen har startat och skickar State igen när utgången har gått av, utan något nytt Result.
+     */
+    data class Pulse(val output: OutputId) : NodeCommand
+
     /** Sätter en PWM-utgång till [value] i [OutputType.PWM_RANGE]. */
     data class SetPwm(val output: OutputId, val value: Int) : NodeCommand {
         init {

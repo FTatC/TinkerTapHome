@@ -109,4 +109,10 @@
     <string name="connection_error_establish_failed">The device could not be reached. Move closer and try again.</string>
     <string name="connection_error_gatt_error">Bluetooth on the phone reported a general error. Turn Bluetooth off and on, then try again.</string>
     <string name="device_output_fallback">Output %1$d</string>
+    <string name="device_output_press">Press</string>
+    <string name="device_output_on">On</string>
+    <string name="device_output_options">Options for %1$s</string>
+    <string name="device_output_show_as_push_button">Show as push button</string>
+    <string name="device_output_show_as_switch">Show as switch</string>
+    <string name="device_push_button_error">Could not read or save which outputs are push buttons.</string>
 </resources>

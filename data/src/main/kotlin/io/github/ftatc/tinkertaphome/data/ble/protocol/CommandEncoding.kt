@@ -9,6 +9,7 @@ internal fun NodeCommand.encode(): ByteArray = when (this) {
     is NodeCommand.Toggle -> bytes(Opcode.TOGGLE, output.value)
     is NodeCommand.SetPwm -> bytes(Opcode.PWM, output.value, value)
     is NodeCommand.SetServo -> bytes(Opcode.SERVO, output.value, angle)
+    is NodeCommand.Pulse -> bytes(Opcode.PULSE, output.value)
     NodeCommand.GetState -> bytes(Opcode.GET_STATE)
     NodeCommand.Ping -> bytes(Opcode.PING)
     is NodeCommand.Authenticate -> bytes(Opcode.AUTH) + token.value.toByteArray(Charsets.US_ASCII)
@@ -22,6 +23,7 @@ internal val NodeCommand.opcode: Int
         is NodeCommand.Toggle -> Opcode.TOGGLE
         is NodeCommand.SetPwm -> Opcode.PWM
         is NodeCommand.SetServo -> Opcode.SERVO
+        is NodeCommand.Pulse -> Opcode.PULSE
         NodeCommand.GetState -> Opcode.GET_STATE
         NodeCommand.Ping -> Opcode.PING
         is NodeCommand.Authenticate -> Opcode.AUTH
@@ -35,6 +37,7 @@ internal val NodeCommand.targetOutput: OutputId?
         is NodeCommand.Toggle -> output
         is NodeCommand.SetPwm -> output
         is NodeCommand.SetServo -> output
+        is NodeCommand.Pulse -> output
         NodeCommand.GetState, NodeCommand.Ping, is NodeCommand.Authenticate, NodeCommand.AllOff -> null
     }
 
