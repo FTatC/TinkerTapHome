@@ -107,4 +107,10 @@
     <string name="connection_error_establish_failed">Det gick inte att nå enheten. Gå närmare och försök igen.</string>
     <string name="connection_error_gatt_error">Telefonens Bluetooth rapporterade ett allmänt fel. Slå av och på Bluetooth och försök sedan igen.</string>
     <string name="device_output_fallback">Utgång %1$d</string>
+    <string name="device_output_press">Tryck</string>
+    <string name="device_output_on">På</string>
+    <string name="device_output_options">Val för %1$s</string>
+    <string name="device_output_show_as_push_button">Visa som tryckknapp</string>
+    <string name="device_output_show_as_switch">Visa som strömbrytare</string>
+    <string name="device_push_button_error">Det gick inte att läsa eller spara vilka utgångar som är tryckknappar.</string>
 </resources>

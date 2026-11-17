@@ -16,10 +16,13 @@ import io.github.ftatc.tinkertaphome.domain.node.Output
 import io.github.ftatc.tinkertaphome.domain.usecase.AllOffUseCase
 import io.github.ftatc.tinkertaphome.domain.usecase.ObserveConnectedDevicesUseCase
 import io.github.ftatc.tinkertaphome.domain.usecase.ObserveOutputsUseCase
+import io.github.ftatc.tinkertaphome.domain.usecase.ObservePushButtonsUseCase
+import io.github.ftatc.tinkertaphome.domain.usecase.PulseOutputUseCase
 import io.github.ftatc.tinkertaphome.domain.usecase.RepairNodeError
 import io.github.ftatc.tinkertaphome.domain.usecase.RepairNodeUseCase
 import io.github.ftatc.tinkertaphome.domain.usecase.RetryConnectionUseCase
 import io.github.ftatc.tinkertaphome.domain.usecase.SetOutputUseCase
+import io.github.ftatc.tinkertaphome.domain.usecase.SetPushButtonUseCase
 import io.github.ftatc.tinkertaphome.domain.usecase.UpdateAuthTokenUseCase
 import io.github.ftatc.tinkertaphome.ui.navigation.DeviceDetailRoute
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -43,7 +46,8 @@ import kotlinx.coroutines.launch
  * telefonen kan användaren parkoppla den igen.
  *
  * Utgångarna visar alltid nodens State, inte det skickade värdet, eftersom noden kan begränsa värdet.
- * Ett kommando skickas i taget.
+ * Ett kommando skickas i taget. En digital utgång som användaren har valt som tryckknapp skickar en
+ * puls i stället för att slås på och av.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel(assistedFactory = DeviceDetailViewModel.Factory::class)
@@ -56,6 +60,9 @@ class DeviceDetailViewModel @AssistedInject constructor(
     private val allOff: AllOffUseCase,
     private val updateAuthToken: UpdateAuthTokenUseCase,
     private val repairNode: RepairNodeUseCase,
+    private val observePushButtons: ObservePushButtonsUseCase,
+    private val pulseOutput: PulseOutputUseCase,
+    private val setPushButton: SetPushButtonUseCase,
 ) : ViewModel() {
 
     private val input = MutableStateFlow(DetailInput())
@@ -78,6 +85,21 @@ class DeviceDetailViewModel @AssistedInject constructor(
     /** Sätter [output] till [value]. Gör inget om ett annat kommando väntar på svar. */
     fun onOutputChange(output: Output, value: Int) {
         sendCommand { address -> setOutput(address, output, value) }
+    }
+
+    /** Skickar en puls till [output]. Gör inget om ett annat kommando väntar på svar. */
+    fun onPulse(output: Output) {
+        sendCommand { address -> pulseOutput(address, output) }
+    }
+
+    /** Sparar om [output] ska visas som tryckknapp eller som switch. */
+    fun onPushButtonChange(output: Output, pushButton: Boolean) {
+        val device = content()?.device ?: return
+        input.update { it.copy(pushButtonSaveFailed = false) }
+        viewModelScope.launch {
+            val result = setPushButton(device.address, output, pushButton)
+            if (result is Outcome.Failure) input.update { it.copy(pushButtonSaveFailed = true) }
+        }
     }
 
     fun onAllOffClick() {
@@ -129,7 +151,8 @@ class DeviceDetailViewModel @AssistedInject constructor(
 
     private fun Outcome<ConnectedDevice?, DeviceError>.withSession(): Flow<DeviceDetailUiState> {
         val connected = (this as? Outcome.Success)?.value ?: return flowOf(toDeviceDetailUiState())
-        return combine(observeOutputs(connected.device.address), input) { session, input ->
+        val address = connected.device.address
+        return combine(observeOutputs(address), observePushButtons(address), input) { session, pushButtons, input ->
             DeviceDetailUiState.Content(
                 device = connected.device,
                 connection = connected.connection,
@@ -141,6 +164,9 @@ class DeviceDetailViewModel @AssistedInject constructor(
                 tokenSaveFailed = input.tokenSaveFailed,
                 isRepairing = input.isRepairing,
                 repairError = input.repairError,
+                // Går valen inte att läsa visas alla digitala utgångar som switchar.
+                pushButtons = (pushButtons as? Outcome.Success)?.value.orEmpty(),
+                pushButtonError = pushButtons is Outcome.Failure || input.pushButtonSaveFailed,
             )
         }
     }
@@ -165,6 +191,7 @@ private data class DetailInput(
     val tokenSaveFailed: Boolean = false,
     val isRepairing: Boolean = false,
     val repairError: RepairNodeError? = null,
+    val pushButtonSaveFailed: Boolean = false,
 )
 
 private fun Outcome<ConnectedDevice?, DeviceError>.toDeviceDetailUiState(): DeviceDetailUiState = when (this) {

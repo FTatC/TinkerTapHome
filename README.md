@@ -6,12 +6,13 @@ https://github.com/FTatC/TinkerTapHome
 
 ## Vad det gör
 
-Appen söker efter enheter som kör firmwaren TinkerTapNode, till exempel ett ESP32- eller nRF52-kort, och parkopplar och sparar dem med ett namn och ett token. Sparade enheter ansluts automatiskt medan appen syns. Varje enhets utgångar visas med sina aktuella värden och kan styras: reläer och lysdioder slås på och av, PWM-utgångar och servon ställs in med reglage, och allt kan släckas med en knapp.
+Appen söker efter enheter som kör firmwaren TinkerTapNode, till exempel ett ESP32- eller nRF52-kort, och parkopplar och sparar dem med ett namn och ett token. Sparade enheter ansluts automatiskt medan appen syns. Varje enhets utgångar visas med sina aktuella värden och kan styras: reläer och lysdioder slås på och av, PWM-utgångar och servon ställs in med reglage, och allt kan släckas med en knapp. En digital utgång kan också visas som tryckknapp, som slår på utgången en halv sekund och sedan av igen.
 
 Exempel på vad appen kan användas till:
 
 - Tända och släcka lampor eller reläer som du har byggt själv.
 - Ställa in ljusstyrka eller fläkthastighet via PWM, eller vinkeln på ett servo.
+- Trycka på en knapp som ger en kort puls, till exempel för en garageport eller en dörröppnare.
 - Se utgångarnas verkliga läge när appen ansluter, även om en annan telefon har ändrat dem under tiden.
 - Parkoppla en enhet igen när den har glömt telefonen, till exempel efter att alla parkopplingar på enheten har raderats.
 
@@ -22,7 +23,7 @@ Exempel på vad appen kan användas till:
 - Android Studio, eller en JDK 17 eller senare. Android Studios inbyggda JDK fungerar.
 - Android SDK med plattform 37. Android Studios SDK Manager installerar den.
 - En fysisk Android-telefon med Android 14 (API 34) eller senare och Bluetooth LE. BLE fungerar inte i emulatorn.
-- Minst en enhet med firmwaren TinkerTapNode, protokollversion 3 (se [`docs/ble-protocol.md`](docs/ble-protocol.md)).
+- Minst en enhet med firmwaren TinkerTapNode 0.5.0, protokollversion 4 (se [`docs/ble-protocol.md`](docs/ble-protocol.md)).
 - Inga externa tjänster. Appen använder varken nätverk, molntjänster eller konton.
 
 ### Installation
@@ -98,7 +99,7 @@ TinkerTapHome/
 
 ## Begränsningar
 
-- **Bara TinkerTapNode.** Andra BLE-enheter visas vid skanning men kan inte sparas eller styras. Bara protokollversion 3 stöds.
+- **Bara TinkerTapNode.** Andra BLE-enheter visas vid skanning men kan inte sparas eller styras. Bara protokollversion 4 stöds, så noder med äldre firmware måste flashas om.
 - **Ingen anslutning i bakgrunden.** Appen kopplar ner alla enheter när den inte syns, så att andra telefoner kan ansluta, och den ansluter igen när den öppnas.
 - **En telefon åt gången.** En nod tar bara emot en anslutning i taget. Medan appen är ansluten kan ingen annan telefon styra noden.
 - **Tokenet sparas okrypterat** i appens lokala databas. Det skyddas av Androids sandlåda för appen, men inte mer än så.

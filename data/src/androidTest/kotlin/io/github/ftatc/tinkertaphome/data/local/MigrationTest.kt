@@ -89,6 +89,27 @@ class MigrationTest {
         }
     }
 
+    @Test
+    fun devicesKeepTheirTokenAndHaveNoPushButtonsAfterMigratingToVersion3() {
+        helper.createDatabase(TEST_DB, 2).use { db ->
+            db.execSQL("INSERT INTO devices (id, address, name, auth_token) VALUES (1, 'AA:BB:CC:DD:EE:01', 'Lampa', 'tinker')")
+        }
+
+        helper.runMigrationsAndValidate(TEST_DB, 3, true, *ALL_MIGRATIONS).use { db ->
+            db.query("SELECT name, auth_token FROM devices WHERE id = 1").use { cursor ->
+                cursor.moveToFirst()
+                assertEquals("Lampa", cursor.getString(0))
+                assertEquals("tinker", cursor.getString(1))
+            }
+            db.query("SELECT COUNT(*) FROM push_buttons").use { cursor ->
+                cursor.moveToFirst()
+                assertEquals(0, cursor.getInt(0))
+            }
+            // Den nya tabellen tar emot rader för en sparad nod efter migreringen.
+            db.execSQL("INSERT INTO push_buttons (device_address, output_name) VALUES ('AA:BB:CC:DD:EE:01', 'btn')")
+        }
+    }
+
     private companion object {
         const val TEST_DB = "migration-test.db"
 

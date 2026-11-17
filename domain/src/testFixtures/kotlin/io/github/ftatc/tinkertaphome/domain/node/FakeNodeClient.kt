@@ -62,14 +62,14 @@ class FakeNodeClient : NodeClient {
     }
 }
 
-/** Info från en nod med protokoll 3 och en digital utgång, som exemplet i `docs/ble-protocol.md`. */
+/** Info från en nod med protokoll 4 och en digital utgång, som exemplet i `docs/ble-protocol.md`. */
 fun testNodeInfo(
     authRequired: Boolean = true,
     outputs: List<Output> = listOf(Output(OutputId(0), "led", OutputType.Digital)),
     heartbeatTimeout: Duration? = null,
 ): NodeInfo = NodeInfo(
-    firmwareVersion = "0.4.0",
-    protocolVersion = 3,
+    firmwareVersion = "0.5.0",
+    protocolVersion = 4,
     name = "TinkerTapNode-A1B2",
     pairingRequired = true,
     authRequired = authRequired,

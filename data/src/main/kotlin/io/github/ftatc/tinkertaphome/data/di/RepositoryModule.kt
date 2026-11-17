@@ -5,8 +5,10 @@ import dagger.Module
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import io.github.ftatc.tinkertaphome.data.repository.DataStoreSettingsRepository
+import io.github.ftatc.tinkertaphome.data.repository.RoomOutputPreferencesRepository
 import io.github.ftatc.tinkertaphome.data.repository.RoomDeviceRepository
 import io.github.ftatc.tinkertaphome.domain.repository.DeviceRepository
+import io.github.ftatc.tinkertaphome.domain.repository.OutputPreferencesRepository
 import io.github.ftatc.tinkertaphome.domain.repository.SettingsRepository
 
 @Module
@@ -18,4 +20,7 @@ internal abstract class RepositoryModule {
 
     @Binds
     abstract fun bindSettingsRepository(impl: DataStoreSettingsRepository): SettingsRepository
+
+    @Binds
+    abstract fun bindOutputPreferencesRepository(impl: RoomOutputPreferencesRepository): OutputPreferencesRepository
 }

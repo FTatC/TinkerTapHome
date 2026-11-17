@@ -13,8 +13,8 @@ import org.junit.Test
 class StateDecodingTest {
 
     private val info = NodeInfo(
-        firmwareVersion = "0.4.0",
-        protocolVersion = 3,
+        firmwareVersion = "0.5.0",
+        protocolVersion = 4,
         name = "TinkerTapNode-A1B2",
         pairingRequired = true,
         authRequired = true,

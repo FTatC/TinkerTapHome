@@ -136,6 +136,22 @@ class GattNodeSessionsTest {
     }
 
     @Test
+    fun `shows a pulse ending without any command from the app`() = runTest {
+        start()
+        sessions.send(address, NodeCommand.Pulse(info.outputs.first().id))
+        client.emitState(Outcome.Success(listOf(1)))
+        runCurrent()
+        val commandsDuringPulse = sentCommands()
+
+        // Noden slår själv av utgången efter pulsen och skickar State utan Result.
+        client.emitState(Outcome.Success(listOf(0)))
+        runCurrent()
+
+        assertEquals(NodeSession.Open(NodeOutputs(info, listOf(0))), session())
+        assertEquals(commandsDuringPulse, sentCommands())
+    }
+
+    @Test
     fun `stops when state does not match the outputs`() = runTest {
         val result = start()
         val failure = NodeFailure.Node(NodeError.StateMismatch(expectedOutputs = 1, actualValues = 2))

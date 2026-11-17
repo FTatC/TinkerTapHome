@@ -16,16 +16,23 @@ import io.github.ftatc.tinkertaphome.domain.node.NodeFailure
 import io.github.ftatc.tinkertaphome.domain.node.NodeOutputs
 import io.github.ftatc.tinkertaphome.domain.node.NodeSession
 import io.github.ftatc.tinkertaphome.domain.node.NodeSessionError
+import io.github.ftatc.tinkertaphome.domain.node.Output
+import io.github.ftatc.tinkertaphome.domain.node.OutputId
+import io.github.ftatc.tinkertaphome.domain.node.OutputType
 import io.github.ftatc.tinkertaphome.domain.node.testNodeInfo
 import io.github.ftatc.tinkertaphome.domain.repository.FakeDeviceRepository
+import io.github.ftatc.tinkertaphome.domain.repository.FakeOutputPreferencesRepository
 import io.github.ftatc.tinkertaphome.domain.usecase.AllOffUseCase
 import io.github.ftatc.tinkertaphome.domain.usecase.ObserveConnectedDevicesUseCase
 import io.github.ftatc.tinkertaphome.domain.usecase.ObserveDevicesUseCase
 import io.github.ftatc.tinkertaphome.domain.usecase.ObserveOutputsUseCase
+import io.github.ftatc.tinkertaphome.domain.usecase.ObservePushButtonsUseCase
+import io.github.ftatc.tinkertaphome.domain.usecase.PulseOutputUseCase
 import io.github.ftatc.tinkertaphome.domain.usecase.RepairNodeError
 import io.github.ftatc.tinkertaphome.domain.usecase.RepairNodeUseCase
 import io.github.ftatc.tinkertaphome.domain.usecase.RetryConnectionUseCase
 import io.github.ftatc.tinkertaphome.domain.usecase.SetOutputUseCase
+import io.github.ftatc.tinkertaphome.domain.usecase.SetPushButtonUseCase
 import io.github.ftatc.tinkertaphome.domain.usecase.UpdateAuthTokenUseCase
 import io.github.ftatc.tinkertaphome.ui.MainDispatcherRule
 import io.github.ftatc.tinkertaphome.ui.navigation.DeviceDetailRoute
@@ -49,6 +56,7 @@ class DeviceDetailViewModelTest {
     private val connection = FakeDeviceConnection()
     private val sessions = FakeNodeSessions(connection)
     private val retry = RetryConnectionUseCase(connection, sessions)
+    private val preferences = FakeOutputPreferencesRepository()
 
     private val info = testNodeInfo()
     private val led = info.outputs.single()
@@ -63,6 +71,9 @@ class DeviceDetailViewModelTest {
         allOff = AllOffUseCase(sessions),
         updateAuthToken = UpdateAuthTokenUseCase(repository, retry),
         repairNode = RepairNodeUseCase(connection, sessions),
+        observePushButtons = ObservePushButtonsUseCase(preferences),
+        pulseOutput = PulseOutputUseCase(sessions),
+        setPushButton = SetPushButtonUseCase(preferences),
     )
 
     private fun content(state: ConnectionState) = DeviceDetailUiState.Content(lampa, state)
@@ -440,4 +451,93 @@ class DeviceDetailViewModelTest {
     }
 
     private val forgotten = NodeSessionError.Node(NodeFailure.Connection(ConnectionError.PairingMissing))
+
+    @Test
+    fun `shows a digital output as a switch until the user chooses a push button`() = runTest {
+        sessions.setSession(lampa.address, open)
+
+        viewModel().uiState.test {
+            assertFalse((awaitItem() as DeviceDetailUiState.Content).isPushButton(led))
+        }
+    }
+
+    @Test
+    fun `saves a digital output as a push button`() = runTest {
+        sessions.setSession(lampa.address, open)
+        val viewModel = viewModel()
+
+        viewModel.uiState.test {
+            awaitItem()
+
+            viewModel.onPushButtonChange(led, pushButton = true)
+
+            assertTrue((awaitItem() as DeviceDetailUiState.Content).isPushButton(led))
+        }
+        assertEquals(setOf(led.name), preferences.pushButtons.value[lampa.address])
+    }
+
+    @Test
+    fun `sends a pulse from a push button`() = runTest {
+        sessions.setSession(lampa.address, open)
+        val viewModel = viewModel()
+
+        viewModel.uiState.test {
+            awaitItem()
+
+            viewModel.onPulse(led)
+            skipItems(2) // Kommandot skickas och svaret kommer.
+        }
+        assertEquals(listOf(lampa.address to NodeCommand.Pulse(led.id)), sessions.sent)
+    }
+
+    @Test
+    fun `sends no pulse when the session is not open`() = runTest {
+        sessions.setSession(lampa.address, NodeSession.Closed(open.outputs))
+        val viewModel = viewModel()
+
+        viewModel.uiState.test {
+            awaitItem()
+
+            viewModel.onPulse(led)
+            expectNoEvents()
+        }
+        assertTrue(sessions.sent.isEmpty())
+    }
+
+    @Test
+    fun `shows when the push button choice cannot be saved`() = runTest {
+        preferences.writeError = DeviceError.StorageUnavailable
+        val viewModel = viewModel()
+
+        viewModel.uiState.test {
+            awaitItem()
+
+            viewModel.onPushButtonChange(led, pushButton = true)
+
+            val shown = awaitItem() as DeviceDetailUiState.Content
+            assertTrue(shown.pushButtonError)
+            assertFalse(shown.isPushButton(led))
+        }
+    }
+
+    @Test
+    fun `shows switches and an error when the push buttons cannot be read`() = runTest {
+        preferences.pushButtons.value = mapOf(lampa.address to setOf(led.name))
+        preferences.readError = DeviceError.StorageUnavailable
+
+        viewModel().uiState.test {
+            val shown = awaitItem() as DeviceDetailUiState.Content
+            assertTrue(shown.pushButtonError)
+            assertFalse(shown.isPushButton(led))
+        }
+    }
+
+    @Test
+    fun `only a digital output is shown as a push button`() {
+        val fan = Output(OutputId(1), led.name, OutputType.Pwm)
+        val shown = DeviceDetailUiState.Content(lampa, ConnectionState.Connected, pushButtons = setOf(led.name))
+
+        assertTrue(shown.isPushButton(led))
+        assertFalse(shown.isPushButton(fan))
+    }
 }

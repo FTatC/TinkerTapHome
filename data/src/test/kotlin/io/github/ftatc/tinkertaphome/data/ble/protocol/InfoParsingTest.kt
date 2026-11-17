@@ -16,14 +16,17 @@ class InfoParsingTest {
     @Test
     fun `parses the example from the protocol spec`() {
         val expected = NodeInfo(
-            firmwareVersion = "0.4.0",
-            protocolVersion = 3,
+            firmwareVersion = "0.5.0",
+            protocolVersion = 4,
             name = "TinkerTapNode-A1B2",
             pairingRequired = true,
             authRequired = true,
             authTimeout = 10.seconds,
             heartbeatTimeout = null,
-            outputs = listOf(Output(OutputId(0), "led", OutputType.Digital)),
+            outputs = listOf(
+                Output(OutputId(0), "led", OutputType.Digital),
+                Output(OutputId(1), "btn", OutputType.Digital),
+            ),
         )
 
         assertEquals(Outcome.Success(expected), parse(SPEC_EXAMPLE))
@@ -71,17 +74,19 @@ class InfoParsingTest {
     @Test
     fun `reports an older protocol as a node that needs new firmware`() {
         assertEquals(Outcome.Failure(NodeError.NodeTooOld(protocolVersion = 2)), parse(info(proto = 2)))
+        // Protokoll 3 saknar PULSE. Appen stöder bara den senaste versionen (fråga 4 i open-questions.md).
+        assertEquals(Outcome.Failure(NodeError.NodeTooOld(protocolVersion = 3)), parse(info(proto = 3)))
     }
 
     @Test
     fun `reports a newer protocol as an app that needs an update`() {
         // Ett nyare protokoll kan ha ändrat andra fält, så resten av Info tolkas inte.
-        assertEquals(Outcome.Failure(NodeError.AppTooOld(protocolVersion = 4)), parse("""{"proto":4,"changed":true}"""))
+        assertEquals(Outcome.Failure(NodeError.AppTooOld(protocolVersion = 5)), parse("""{"proto":5,"changed":true}"""))
     }
 
     @Test
     fun `rejects info that is not valid JSON`() {
-        assertEquals(Outcome.Failure(NodeError.InvalidInfo), parse("""{"fw":"0.4.0","proto":3"""))
+        assertEquals(Outcome.Failure(NodeError.InvalidInfo), parse("""{"fw":"0.5.0","proto":4"""))
         assertEquals(Outcome.Failure(NodeError.InvalidInfo), parse("""[3]"""))
     }
 
@@ -92,7 +97,7 @@ class InfoParsingTest {
 
     @Test
     fun `rejects a protocol version that is not a number`() {
-        assertEquals(Outcome.Failure(NodeError.InvalidInfo), parse(SPEC_EXAMPLE.replace("\"proto\":3", "\"proto\":\"3\"")))
+        assertEquals(Outcome.Failure(NodeError.InvalidInfo), parse(SPEC_EXAMPLE.replace("\"proto\":4", "\"proto\":\"4\"")))
     }
 
     @Test
@@ -135,18 +140,18 @@ class InfoParsingTest {
     private fun Outcome<NodeInfo, NodeError>.successValue(): NodeInfo = (this as Outcome.Success).value
 
     private fun info(
-        proto: Int = 3,
+        proto: Int = 4,
         name: String = "TinkerTapNode-A1B2",
         pair: Int = 1,
         auth: Int = 1,
         ato: Int = 10000,
         hb: Int = 0,
         dev: String = """[{"id":0,"n":"led","t":"D"}]""",
-    ): String = """{"fw":"0.4.0","proto":$proto,"name":"$name","pair":$pair,"auth":$auth,"ato":$ato,"hb":$hb,"dev":$dev}"""
+    ): String = """{"fw":"0.5.0","proto":$proto,"name":"$name","pair":$pair,"auth":$auth,"ato":$ato,"hb":$hb,"dev":$dev}"""
 
     private companion object {
         /** Exemplet i avsnittet "Info" i `docs/ble-protocol.md`. */
         const val SPEC_EXAMPLE =
-            """{"fw":"0.4.0","proto":3,"name":"TinkerTapNode-A1B2","pair":1,"auth":1,"ato":10000,"hb":0,"dev":[{"id":0,"n":"led","t":"D"}]}"""
+            """{"fw":"0.5.0","proto":4,"name":"TinkerTapNode-A1B2","pair":1,"auth":1,"ato":10000,"hb":0,"dev":[{"id":0,"n":"led","t":"D"},{"id":1,"n":"btn","t":"D"}]}"""
     }
 }

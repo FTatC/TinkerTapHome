@@ -85,8 +85,10 @@ internal class GattNodeSessions @Inject constructor(
         }
         if (info.authRequired && token == null) return NodeSessionError.TokenMissing
         val ended = CompletableDeferred<NodeFailure?>()
-        // Bara appen kan ändra State medan den är ansluten, eftersom noden tar emot en anslutning åt
-        // gången. Därför spelar det ingen roll om notifieringarna slås på före eller efter läsningen.
+        // Noden tar emot en anslutning åt gången, så State ändras bara av appens kommandon och av en
+        // PULSE som går av efter 0,5 s. En puls som startades före en nedkoppling har gått av långt
+        // innan återanslutningen och läsningen av Info är klara. Därför spelar det ingen roll om
+        // notifieringarna slås på före eller efter läsningen av State.
         launch(start = CoroutineStart.UNDISPATCHED) { followState(address, info, session, ended) }
         val values = when (val read = client.readState(address, info)) {
             is Outcome.Success -> read.value

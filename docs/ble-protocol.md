@@ -1,12 +1,12 @@
-# BLE-protokoll: TinkerTapNode (protokollversion 3)
+# BLE-protokoll: TinkerTapNode (protokollversion 4)
 
 Det här dokumentet beskriver protokollet som TinkerTapHome använder för att prata med enheter som kör firmwaren **TinkerTapNode**. Det är underlaget för fas 6 i `docs/roadmap.md`.
 
-**Källa:** Arduino-repot `TinkerTapNode`, `main` vid commit `7632768`: filerna `config.h`, `protocol.h`, `bonds.cpp`, `TinkerTapNode.ino` och avsnittet om BLE-arkitektur i repots CLAUDE.md, samt `docs/app-flow.md` (commit `55d40a4`), som beskriver anslutningsflödet från appens sida. Det gäller firmwareversion `0.4.0` och **protokollversion 3**.
+**Källa:** Arduino-repot `TinkerTapNode`, `main` vid commit `294ca4a`: filerna `config.h`, `protocol.h`, `bonds.cpp`, `TinkerTapNode.ino` och avsnittet om BLE-arkitektur i repots CLAUDE.md, samt `docs/app-flow.md`, som beskriver anslutningsflödet från appens sida. Det gäller firmwareversion `0.5.0` och **protokollversion 4**.
 
-> **Status:** Protokoll 3 är mergat till `main` i Arduino-repot. Efter mergen har tre buggfixar tillkommit utan att protokollet eller firmwareversionen ändrats (se [Kända fel i ArduinoBLE](#kända-fel-i-arduinoble-rättade) och [Hur kommandon hanteras](#hur-kommandon-hanteras-kod)). Fixarna visar att parkopplingen har provats på kortet, men repot säger inte uttryckligen att hela flödet med appen är verifierat.
+> **Status:** Protokoll 4 lägger till kommandot `PULSE` (se [Opcodes](#opcodes) och [Puls](#puls-pulse)). I övrigt är det samma protokoll som version 3, inklusive de tre buggfixar i firmware `0.4.0` som tillkom efter att protokoll 3 mergades (se [Kända fel i ArduinoBLE](#kända-fel-i-arduinoble-rättade) och [Hur kommandon hanteras](#hur-kommandon-hanteras-kod)).
 >
-> Firmwareversionen är fortfarande `0.4.0`. En nod som flashades från `feature/ble-pairing` (`f6a1aaf`) har därför samma `fw` i Info men saknar fixarna. Sådana noder bör flashas om.
+> Appen stöder bara protokoll 4. Noder med firmware `0.4.0` eller äldre måste flashas om med `0.5.0`.
 
 Där firmwarens CLAUDE.md och dess kod skiljer sig gäller **koden**, eftersom det är den som körs på enheterna. Detaljer som bara framgår av koden är markerade med *(kod)*.
 
@@ -148,6 +148,7 @@ AUTH: [0x20]    [token: 1–19 byte ASCII]
 | `0x02` | `TOGGLE` | id | ja | Digital | Växlar mellan av och på |
 | `0x03` | `PWM` | id + 1 byte, `0`–`255` | ja | PWM | Sätter PWM-värdet |
 | `0x04` | `SERVO` | id + 1 byte, `0`–`180` | ja | Servo | Sätter servots vinkel i grader. Värden över 180 sätts till 180. |
+| `0x05` | `PULSE` | id | ja | Digital | Slår på utgången i 500 ms (`PULSE_MS`) och sedan av, som en tryckknapp. Från protokoll 4. |
 | `0x10` | `GET_STATE` | – | nej | – | Skickar en notifiering av State utan att ändra något |
 | `0x11` | `PING` | – | ja | – | Heartbeat. Nollställer timern för timeout. |
 | `0x20` | `AUTH` | token | – | – | Låser upp övriga kommandon för anslutningen. **Fel token kopplar ner anslutningen.** |
@@ -170,7 +171,7 @@ I övriga fall kontrolleras kommandot i ordningen nedan. Det första som slår t
 | 3 | `GET_STATE` | `OK` | `0xFF` |
 | 4 | `AUTH`: rätt token | `OK` | `0xFF` |
 | 4 | `AUTH`: fel token | `AUTH_FAILED`, sedan nedkoppling | `0xFF` |
-| 5 | Inte autentiserad (gäller `SET`, `TOGGLE`, `PWM`, `SERVO`, `PING` och `ALL_OFF`) | `NOT_AUTHORIZED` | `0xFF` |
+| 5 | Inte autentiserad (gäller `SET`, `TOGGLE`, `PULSE`, `PWM`, `SERVO`, `PING` och `ALL_OFF`) | `NOT_AUTHORIZED` | `0xFF` |
 | 6 | `PING` | `OK` | `0xFF` |
 | 7 | `ALL_OFF` | `OK` | `0xFF` |
 | 8 | `deviceId` saknas | `INVALID_DEVICE` | `0xFF` |
@@ -187,10 +188,25 @@ Ett avvisat kommando påverkar aldrig utgångarna.
 
 | Kommando | Notifieringar |
 |---|---|
-| `SET`, `TOGGLE`, `PWM` och `SERVO` som lyckas, samt `ALL_OFF` och `GET_STATE` | Först **State**, sedan **Result** |
+| `SET`, `TOGGLE`, `PULSE`, `PWM` och `SERVO` som lyckas, samt `ALL_OFF` och `GET_STATE` | Först **State**, sedan **Result** |
+| `PULSE` när pulsen är slut, efter 500 ms | Bara **State**, utan Result |
 | Övriga kommandon och alla avvisade kommandon | Bara **Result** |
 
 Ett godkänt kommando som inte ändrar något, till exempel `SET 1` på en utgång som redan är på, ger ändå en notifiering av State.
+
+### Puls (`PULSE`)
+
+`PULSE` simulerar en fjädrande tryckknapp, till exempel för en garageport eller en dörröppnare.
+
+1. Utgången går till `1`. Noden skickar State och sedan Result `OK`, som betyder att pulsen har *startat*.
+2. Efter 500 ms går utgången till `0`, och noden skickar State igen utan något Result.
+
+- En ny `PULSE` medan pulsen pågår startar om tiden.
+- `SET`, `TOGGLE`, `ALL_OFF` och timeout för heartbeat avbryter pulsen.
+- En puls fullföljs och slutar i av även om appen kopplar från. Det är det enda undantaget från att utgångarna behåller sina värden vid frånkoppling.
+- Info säger inte vilka digitala utgångar som är tänkta som tryckknappar. Alla digitala utgångar tar emot `PULSE`. I appen väljer användaren per utgång om den visas som switch eller tryckknapp. Valet sparas i appens databas med nodens adress och utgångens namn.
+
+**Följd för appen:** State kan komma när som helst, inte bara som svar på appens kommandon. Appen följer State under hela sessionen och visar alltid det senaste värdet.
 
 ### Skrivsätt: Write With Response, ett kommando i taget
 
@@ -215,6 +231,7 @@ Förutsätter `auth` = `1` och standardtokenet `tinker`.
 | Växla utgång 0 | `02 00` | `02 00 00` |
 | Sätt utgång 1 (PWM) till 50 % | `03 01 80` | `03 01 00` |
 | Sätt utgång 2 (servo) till 90° | `04 02 5A` | `04 02 00` |
+| Puls på utgång 1 (`btn`, digital) | `05 01` | `05 01 00` |
 | Heartbeat | `11` | `11 FF 00` |
 | Be om aktuellt tillstånd | `10` | `10 FF 00` |
 | Alla utgångar till säkert läge | `FF` | `FF FF 00` |
@@ -267,7 +284,8 @@ byte:   0          1          …   N-1
 | Servo | `0`–`180` (grader) |
 
 Noden skickar en notifiering av State:
-- efter `SET`, `TOGGLE`, `PWM` och `SERVO` som lyckas
+- efter `SET`, `TOGGLE`, `PULSE`, `PWM` och `SERVO` som lyckas
+- när en puls är slut, 500 ms efter `PULSE`. Då kommer **ingen** Result-notifiering.
 - efter `ALL_OFF` och `GET_STATE`
 - vid timeout för heartbeat (se [Heartbeat](#heartbeat)). Då kommer **ingen** Result-notifiering.
 
@@ -280,13 +298,13 @@ State kan läsas utan autentisering, både direkt och via `GET_STATE`. Eftersom 
 Info är en JSON-sträng i UTF-8 som beskriver noden. Den skrivs vid uppstart och ändras inte medan noden kör. Info kan läsas utan autentisering.
 
 ```json
-{"fw":"0.4.0","proto":3,"name":"TinkerTapNode-A1B2","pair":1,"auth":1,"ato":10000,"hb":0,"dev":[{"id":0,"n":"led","t":"D"}]}
+{"fw":"0.5.0","proto":4,"name":"TinkerTapNode-A1B2","pair":1,"auth":1,"ato":10000,"hb":0,"dev":[{"id":0,"n":"led","t":"D"},{"id":1,"n":"btn","t":"D"}]}
 ```
 
 | Fält | Typ | Betydelse |
 |---|---|---|
-| `fw` | sträng | Firmwareversion, till exempel `"0.4.0"`. Bara för visning. |
-| `proto` | heltal | Protokollversion. Det här dokumentet beskriver `3`. |
+| `fw` | sträng | Firmwareversion, till exempel `"0.5.0"`. Bara för visning. |
+| `proto` | heltal | Protokollversion. Det här dokumentet beskriver `4`. |
 | `name` | sträng | Nodens namn, samma som i annonseringen |
 | `pair` | heltal | `1` = parkoppling (krypterad länk) krävs för Command, `0` = krävs inte |
 | `auth` | heltal | `1` = `AUTH` krävs, `0` = krävs inte |
@@ -297,7 +315,7 @@ Info är en JSON-sträng i UTF-8 som beskriver noden. Den skrivs vid uppstart oc
 | `dev[].n` | sträng | Utgångens namn, till exempel `"led"`. Kort och på engelska. |
 | `dev[].t` | sträng | Typ: `"D"` = Digital, `"P"` = PWM, `"S"` = Servo |
 
-- **Läs Info först** efter anslutning och kontrollera `proto`. Appen stöder bara den senaste versionen, `3` (fråga 4 i [`docs/open-questions.md`](open-questions.md), beslut 2026-11-13). Är `proto` något annat ska appen koppla från och inte styra noden. Är versionen lägre visar appen att noden behöver ny firmware, och är den högre att appen behöver uppdateras. Saknas `proto` räknas noden som för gammal.
+- **Läs Info först** efter anslutning och kontrollera `proto`. Appen stöder bara den senaste versionen, `4` (fråga 4 i [`docs/open-questions.md`](open-questions.md), beslut 2026-11-13 och 2026-11-16). Är `proto` något annat ska appen koppla från och inte styra noden. Är versionen lägre visar appen att noden behöver ny firmware, och är den högre att appen behöver uppdateras. Saknas `proto` räknas noden som för gammal.
 - **Okända fält ska ignoreras.** Firmwaren lägger till nya fält utan att höja `proto`. Ändrad betydelse eller borttagna fält kräver ett nytt `proto`.
 - **Hårdkoda aldrig `deviceId`.** Id:t är ett index i firmwarens tabell och kan ändras mellan firmwareversioner. Appen bygger listan över utgångar från `dev` vid varje anslutning.
 - Strängen är högst **512 byte**, vilket är ATT-gränsen. Firmwaren kontrollerar redan vid kompilering att JSON:en ryms, så den kortas inte av. Appen ska ändå behandla ogiltig JSON som ett fel.
@@ -308,7 +326,7 @@ Info är en JSON-sträng i UTF-8 som beskriver noden. Den skrivs vid uppstart oc
 
 ## Autentisering (AUTH)
 
-- När `auth` = `1` avvisas alla kommandon som kan ändra något (`SET`, `TOGGLE`, `PWM`, `SERVO`, `ALL_OFF` och `PING`) med `NOT_AUTHORIZED` tills appen har skickat `AUTH` med rätt token. Bara `GET_STATE` och `AUTH` är öppna. Info och State kan alltid läsas.
+- När `auth` = `1` avvisas alla kommandon som kan ändra något (`SET`, `TOGGLE`, `PULSE`, `PWM`, `SERVO`, `ALL_OFF` och `PING`) med `NOT_AUTHORIZED` tills appen har skickat `AUTH` med rätt token. Bara `GET_STATE` och `AUTH` är öppna. Info och State kan alltid läsas.
 - Tokenet är 1–19 byte ASCII och måste matcha exakt, både innehåll och längd. Firmwarens standardtoken är `tinker` och ska bytas innan noden används på riktigt.
 - Autentiseringen gäller **per anslutning** och nollställs när anslutningen bryts. Appen måste skicka `AUTH` efter varje anslutning.
 - **Tid för AUTH:** En central som inte har autentiserat sig inom `ato` millisekunder från anslutningen (standard 10 s) kopplas ner. Det inkluderar anslutning, MTU, service discovery, läsning av Info, CCCD för notifieringar, kryptering och själva `AUTH`. Tiden står still medan parkopplingsfönstret är öppet.
@@ -334,7 +352,7 @@ Varje utgång har ett säkert värde (`safeValue`) i firmwaren. Det är oftast `
 | Uppstart | Sätts till sina säkra värden |
 | `ALL_OFF` (kräver AUTH) | Sätts till sina säkra värden |
 | Timeout för heartbeat medan en central är ansluten | Sätts till sina säkra värden |
-| **Frånkoppling, utom räckhåll, timeout för AUTH eller fel token** | **Behåller sina värden.** Ingenting ändras. |
+| **Frånkoppling, utom räckhåll, timeout för AUTH eller fel token** | **Behåller sina värden.** Ingenting ändras, utom att en pågående puls fullföljs och slutar i av. |
 
 **Följder för appen:**
 - Det går att tända något, koppla från och sedan ansluta igen och läsa det verkliga läget i State.

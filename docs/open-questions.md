@@ -7,7 +7,7 @@ Beslut som agenten inte får ta själv (se CLAUDE.md). Varje fråga har ett svar
 | 1 | [Parkoppling och identitet](#1-parkoppling-och-identitet) | Fas 6, beslut 1.3 | ✅ Besvarad 2026-11-14 |
 | 2 | [Var tokenet kommer ifrån och var det sparas](#2-var-tokenet-kommer-ifrån-och-var-det-sparas) | Fas 6, databasschema | ✅ Besvarad 2026-11-13 |
 | 3 | [Token i telefonen](#3-token-i-telefonen) | Fas 6 | ✅ Besvarad 2026-11-13 |
-| 4 | [Vilka protokollversioner appen stöder](#4-vilka-protokollversioner-appen-stöder) | Fas 6 | ✅ Besvarad 2026-11-13 |
+| 4 | [Vilka protokollversioner appen stöder](#4-vilka-protokollversioner-appen-stöder) | Fas 6 | ✅ Besvarad 2026-11-13, bekräftad 2026-11-16 |
 | 5 | [`autoConnect` och en anslutning åt gången](#5-autoconnect-och-en-anslutning-åt-gången) | Fas 5 (uppföljning), fas 6 | ✅ Besvarad 2026-11-13 |
 | 6 | [Ordningen mellan Result och skrivbekräftelsen](#6-ordningen-mellan-result-och-skrivbekräftelsen) | Fas 6 | ✅ Besvarad 2026-11-14 |
 | 7 | [Parkopplingsknappen och glömda parkopplingar i appen](#7-parkopplingsknappen-och-glömda-parkopplingar-i-appen) | Fas 6 | ✅ Besvarad 2026-11-13 |
@@ -64,6 +64,7 @@ Adressen är stabil: när noden startades om anslöt appen igen till den sparade
 | 1 | – |
 | 2 | Tid för AUTH, nedkoppling vid fel token och att `ALL_OFF` kräver AUTH |
 | 3 | Parkoppling och krypterad länk för Command |
+| 4 | Kommandot `PULSE`, som slår på en digital utgång i 0,5 s och sedan av |
 
 Firmware `0.1.0` saknar både `proto` och Result. Protokoll 3 är mergat till Arduino-repots `main`. Noder som inte har flashats om sedan dess kör fortfarande protokoll 2 eller äldre.
 
@@ -76,6 +77,8 @@ Firmware `0.1.0` saknar både `proto` och Result. Protokoll 3 är mergat till Ar
   - Info som saknar `proto` eller inte går att tolka, till exempel från firmware `0.1.0`, behandlas som en för gammal nod.
 - Ingen kod för äldre protokoll. Fältet `pair` läses ändå, eftersom firmwaren kan byggas med `PAIRING_REQUIRED = false`.
 - När firmwaren höjer `PROTOCOL_VERSION` uppdateras `docs/ble-protocol.md` och appen till den nya versionen, och den gamla slutar stödjas.
+
+**Uppföljning (2026-11-16):** Firmware `0.5.0` höjde protokollet till `4` med kommandot `PULSE`. Beslutet står fast: appen stöder nu bara `proto` = `4`, och noder med protokoll 3 visar att de behöver ny firmware. Vilka digitala utgångar som visas som tryckknappar väljer användaren i appen, eftersom Info inte säger det (se `docs/ble-protocol.md`, Puls).
 
 ## 5. `autoConnect` och en anslutning åt gången
 

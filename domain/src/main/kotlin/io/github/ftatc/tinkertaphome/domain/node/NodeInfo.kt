@@ -9,7 +9,7 @@ import kotlin.time.Duration
  * firmwareversioner.
  */
 data class NodeInfo(
-    /** Firmwareversion, till exempel `0.4.0`. Bara för visning. */
+    /** Firmwareversion, till exempel `0.5.0`. Bara för visning. */
     val firmwareVersion: String,
     val protocolVersion: Int,
     /** Nodens namn, samma som i annonseringen. Rensat från osynliga tecken. */
